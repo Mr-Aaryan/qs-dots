@@ -1,0 +1,2 @@
+module shared.components
+IconButton 1.0 components/IconButton.qml
