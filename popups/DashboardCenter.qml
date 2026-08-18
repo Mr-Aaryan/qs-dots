@@ -32,10 +32,6 @@ Item {
     property bool editingUserName: false
     property string editingName: ""
 
-    // ============================================================
-    // OPEN / CLOSE
-    // ============================================================
-
     function open() {
         opened = true;
     }
@@ -47,10 +43,6 @@ Item {
     function toggle() {
         opened ? close() : open();
     }
-
-    // ============================================================
-    // LOAD SETTINGS
-    // ============================================================
 
     Component.onCompleted: {
         updateDateTime();
@@ -69,10 +61,6 @@ Item {
             dashboardCenter.userName = Settings.userName;
         }
     }
-
-    // ============================================================
-    // USERNAME
-    // ============================================================
 
     function startEditingUserName() {
         editingName = userName;
@@ -94,10 +82,6 @@ Item {
 
         editingUserName = false;
     }
-
-    // ============================================================
-    // PROFILE PICKER
-    // ============================================================
 
     FileDialog {
         id: profileDialog
@@ -127,10 +111,6 @@ Item {
         profileDialog.open();
     }
 
-    // ============================================================
-    // SYSTEM TIME
-    // ============================================================
-
     property string currentTime: ""
     property string currentDate: ""
 
@@ -150,10 +130,6 @@ Item {
             dashboardCenter.updateDateTime();
         }
     }
-
-    // ============================================================
-    // UPTIME
-    // ============================================================
 
     property string uptime: "--"
 
@@ -183,10 +159,6 @@ Item {
             uptimeProcess.running = true;
         }
     }
-
-    // ============================================================
-    // SLIDE ANIMATION
-    // ============================================================
 
     Item {
         id: revealArea
@@ -219,10 +191,6 @@ Item {
                 }
             }
 
-            // ====================================================
-            // MAIN PANEL
-            // ====================================================
-
             Rectangle {
                 anchors.fill: parent
 
@@ -232,10 +200,6 @@ Item {
 
                 border.width: 1
                 border.color: Colors.surface
-
-                // =================================================
-                // HEADER
-                // =================================================
 
                 Item {
                     id: header
@@ -251,10 +215,6 @@ Item {
                     }
 
                     height: 52
-
-                    // =============================================
-                    // DATE / TIME
-                    // =============================================
 
                     Column {
                         id: dateInfo

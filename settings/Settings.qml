@@ -2,66 +2,44 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
-import Quickshell.Io
+import Quickshell.Io as Io
 
-QtObject {
+Io.FileView {
     id: root
-
-    // ============================================================
-    // SETTINGS
-    // ============================================================
 
     property string userName: "Mr-Aaryan"
     property string profileImage: ""
 
-    readonly property string settingsFile:
-        Quickshell.env("HOME") +
-        "/.config/quickshell/settings.json"
+    readonly property string settingsFile: Quickshell.env("HOME") + "/.config/quickshell/settings.json"
 
-    // ============================================================
-    // FILE
-    // ============================================================
+    path: root.settingsFile
 
-    property FileView fileView: FileView {
-        path: root.settingsFile
+    watchChanges: true
 
-        watchChanges: true
+    onLoaded: {
+        const settings = JSON.parse(root.text());
+        root.userName = settings.userName ?? root.userName;
+        root.profileImage = settings.profileImage ?? root.profileImage;
 
-        JsonAdapter {
-            property string userName: "Mr-Aaryan"
-            property string profileImage: ""
-        }
-
-        onLoaded: {
-            root.userName = adapter.userName
-            root.profileImage = adapter.profileImage
-
-            console.log("Settings loaded")
-            console.log("Username:", root.userName)
-            console.log("Profile:", root.profileImage)
-        }
+        console.log("Settings loaded");
+        console.log("Username:", root.userName);
+        console.log("Profile:", root.profileImage);
     }
 
-    // ============================================================
-    // SAVE
-    // ============================================================
+    onFileChanged: root.reload()
 
     function save() {
-        fileView.adapter.userName = root.userName
-        fileView.adapter.profileImage = root.profileImage
-
-        fileView.writeAdapter()
+        root.setText(JSON.stringify({
+            userName: root.userName,
+            profileImage: root.profileImage
+        }, null, 4));
     }
 
-    // ============================================================
-    // LOAD
-    // ============================================================
-
     function load() {
-        fileView.reload()
+        root.reload();
     }
 
     Component.onCompleted: {
-        load()
+        load();
     }
 }

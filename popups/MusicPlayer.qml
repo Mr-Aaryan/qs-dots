@@ -58,13 +58,7 @@ Item {
         if (!root.activePlayer)
             return "";
 
-        return String(
-            root.activePlayer.trackTitle || ""
-        ) + "|" + String(
-            root.activePlayer.trackArtist || ""
-        ) + "|" + String(
-            root.activePlayer.trackAlbum || ""
-        );
+        return String(root.activePlayer.trackTitle || "") + "|" + String(root.activePlayer.trackArtist || "") + "|" + String(root.activePlayer.trackAlbum || "");
     }
 
     function updateTrackState() {
@@ -80,14 +74,12 @@ Item {
         if (newId !== root.trackId) {
             root.trackId = newId;
 
-            const newLength =
-                Number(root.activePlayer.length);
+            const newLength = Number(root.activePlayer.length);
 
             if (isFinite(newLength) && newLength > 0)
                 root.trackLength = newLength;
 
-            const newPosition =
-                Number(root.activePlayer.position);
+            const newPosition = Number(root.activePlayer.position);
 
             if (isFinite(newPosition) && newPosition >= 0)
                 root.displayPosition = newPosition;
@@ -105,8 +97,7 @@ Item {
         // --------------------------------------------------------
 
         if (!progressMouseArea.pressed) {
-            const position =
-                Number(root.activePlayer.position);
+            const position = Number(root.activePlayer.position);
 
             if (isFinite(position) && position >= 0)
                 root.displayPosition = position;
@@ -152,8 +143,7 @@ Item {
 
         function onPositionChanged() {
             if (!progressMouseArea.pressed) {
-                const position =
-                    Number(root.activePlayer.position);
+                const position = Number(root.activePlayer.position);
 
                 if (isFinite(position) && position >= 0)
                     root.displayPosition = position;
@@ -163,7 +153,7 @@ Item {
         function onTrackChanged() {
             root.trackId = "";
 
-            Qt.callLater(function() {
+            Qt.callLater(function () {
                 root.updateTrackState();
             });
         }
@@ -210,9 +200,7 @@ Item {
 
                 anchors.fill: parent
 
-                source: root.activePlayer
-                        ? root.activePlayer.trackArtUrl
-                        : ""
+                source: root.activePlayer ? root.activePlayer.trackArtUrl : ""
 
                 fillMode: Image.PreserveAspectCrop
 
@@ -253,9 +241,7 @@ Item {
                 rightMargin: 7
             }
 
-            text: root.activePlayer
-                  ? root.activePlayer.identity
-                  : "Music Player"
+            text: root.activePlayer ? root.activePlayer.identity : "Music Player"
 
             color: Colors.subtext
 
@@ -285,10 +271,7 @@ Item {
                 rightMargin: 7
             }
 
-            text: root.activePlayer &&
-                  root.activePlayer.trackTitle
-                  ? root.activePlayer.trackTitle
-                  : "Nothing playing"
+            text: root.activePlayer && root.activePlayer.trackTitle ? root.activePlayer.trackTitle : "Nothing playing"
 
             color: Colors.text
 
@@ -319,10 +302,7 @@ Item {
                 rightMargin: 7
             }
 
-            text: root.activePlayer &&
-                  root.activePlayer.trackArtist
-                  ? root.activePlayer.trackArtist
-                  : "Unknown Artist"
+            text: root.activePlayer && root.activePlayer.trackArtist ? root.activePlayer.trackArtist : "Unknown Artist"
 
             color: Colors.subtext
 
@@ -352,10 +332,7 @@ Item {
                 rightMargin: 7
             }
 
-            text: root.activePlayer &&
-                  root.activePlayer.trackAlbum
-                  ? root.activePlayer.trackAlbum
-                  : ""
+            text: root.activePlayer && root.activePlayer.trackAlbum ? root.activePlayer.trackAlbum : ""
 
             color: Colors.subtext
 
@@ -417,23 +394,13 @@ Item {
                 Rectangle {
                     id: progressFill
 
-                    width: root.trackLength > 0
-                           ? progressTrack.width *
-                             Math.max(
-                                 0,
-                                 Math.min(
-                                     1,
-                                     root.displayPosition /
-                                     root.trackLength
-                                 )
-                             )
-                           : 0
+                    width: root.trackLength > 0 ? progressTrack.width * Math.max(0, Math.min(1, root.displayPosition / root.trackLength)) : 0
 
                     height: parent.height
 
                     radius: 3
 
-                    color: Colors.blue
+                    color: Colors.accent
 
                     Behavior on width {
                         enabled: !progressMouseArea.pressed
@@ -459,15 +426,9 @@ Item {
 
                     anchors.verticalCenter: parent.verticalCenter
 
-                    x: Math.max(
-                        -1,
-                        Math.min(
-                            parent.width - width + 1,
-                            progressFill.width - width / 2
-                        )
-                    )
+                    x: Math.max(-1, Math.min(parent.width - width + 1, progressFill.width - width / 2))
 
-                    color: Colors.blue
+                    color: Colors.accent
 
                     visible: root.activePlayer !== null
 
@@ -493,25 +454,15 @@ Item {
 
                 hoverEnabled: true
 
-                enabled: root.activePlayer &&
-                         root.activePlayer.canSeek &&
-                         root.trackLength > 0
+                enabled: root.activePlayer && root.activePlayer.canSeek && root.trackLength > 0
 
-                cursorShape: enabled
-                             ? Qt.PointingHandCursor
-                             : Qt.ArrowCursor
+                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
 
                 function positionFromMouse(mouseX) {
                     if (root.trackLength <= 0)
                         return 0;
 
-                    const ratio = Math.max(
-                        0,
-                        Math.min(
-                            1,
-                            mouseX / progressTrack.width
-                        )
-                    );
+                    const ratio = Math.max(0, Math.min(1, mouseX / progressTrack.width));
 
                     return root.trackLength * ratio;
                 }
@@ -520,16 +471,15 @@ Item {
                 // START
                 // ------------------------------------------------
 
-                onPressed: function(mouse) {
-                    root.displayPosition =
-                        positionFromMouse(mouse.x);
+                onPressed: function (mouse) {
+                    root.displayPosition = positionFromMouse(mouse.x);
                 }
 
                 // ------------------------------------------------
                 // DRAG
                 // ------------------------------------------------
 
-                onPositionChanged: function(mouse) {
+                onPositionChanged: function (mouse) {
                     if (!pressed)
                         return;
 
@@ -537,27 +487,23 @@ Item {
                     //
                     // Absolutely do NOT change
                     // activePlayer.position here.
-                    root.displayPosition =
-                        positionFromMouse(mouse.x);
+                    root.displayPosition = positionFromMouse(mouse.x);
                 }
 
                 // ------------------------------------------------
                 // RELEASE
                 // ------------------------------------------------
 
-                onReleased: function(mouse) {
+                onReleased: function (mouse) {
                     if (!root.activePlayer)
                         return;
 
-                    const finalPosition =
-                        positionFromMouse(mouse.x);
+                    const finalPosition = positionFromMouse(mouse.x);
 
-                    root.displayPosition =
-                        finalPosition;
+                    root.displayPosition = finalPosition;
 
                     // Only seek once.
-                    root.activePlayer.position =
-                        finalPosition;
+                    root.activePlayer.position = finalPosition;
                 }
 
                 onCanceled: {
@@ -587,9 +533,7 @@ Item {
             Text {
                 id: currentTime
 
-                text: root.activePlayer
-                      ? root.formatTime(root.displayPosition)
-                      : "0:00"
+                text: root.activePlayer ? root.formatTime(root.displayPosition) : "0:00"
 
                 color: Colors.subtext
 
@@ -598,9 +542,7 @@ Item {
             }
 
             Item {
-                width: parent.width -
-                       currentTime.width -
-                       totalTime.width
+                width: parent.width - currentTime.width - totalTime.width
 
                 height: 1
             }
@@ -608,9 +550,7 @@ Item {
             Text {
                 id: totalTime
 
-                text: root.activePlayer
-                      ? root.formatTime(root.trackLength)
-                      : "0:00"
+                text: root.activePlayer ? root.formatTime(root.trackLength) : "0:00"
 
                 color: Colors.subtext
 
@@ -645,14 +585,9 @@ Item {
 
                 radius: 6
 
-                color: previousMouse.containsMouse
-                       ? Colors.base
-                       : "transparent"
+                color: previousMouse.containsMouse ? Colors.base : "transparent"
 
-                opacity: root.activePlayer &&
-                         root.activePlayer.canGoPrevious
-                         ? 1
-                         : 0.4
+                opacity: root.activePlayer && root.activePlayer.canGoPrevious ? 1 : 0.4
 
                 Text {
                     anchors.centerIn: parent
@@ -673,8 +608,7 @@ Item {
 
                     cursorShape: Qt.PointingHandCursor
 
-                    enabled: root.activePlayer &&
-                             root.activePlayer.canGoPrevious
+                    enabled: root.activePlayer && root.activePlayer.canGoPrevious
 
                     onClicked: {
                         root.activePlayer.previous();
@@ -692,17 +626,12 @@ Item {
 
                 radius: 6
 
-                color: playMouse.containsMouse
-                       ? Colors.base
-                       : "transparent"
+                color: playMouse.containsMouse ? Colors.base : "transparent"
 
                 Text {
                     anchors.centerIn: parent
 
-                    text: root.activePlayer &&
-                          root.activePlayer.isPlaying
-                          ? "󰏤"
-                          : "󰐊"
+                    text: root.activePlayer && root.activePlayer.isPlaying ? "󰏤" : "󰐊"
 
                     color: Colors.text
 
@@ -718,8 +647,7 @@ Item {
 
                     cursorShape: Qt.PointingHandCursor
 
-                    enabled: root.activePlayer &&
-                             root.activePlayer.canTogglePlaying
+                    enabled: root.activePlayer && root.activePlayer.canTogglePlaying
 
                     onClicked: {
                         root.activePlayer.togglePlaying();
@@ -737,14 +665,9 @@ Item {
 
                 radius: 6
 
-                color: nextMouse.containsMouse
-                       ? Colors.base
-                       : "transparent"
+                color: nextMouse.containsMouse ? Colors.base : "transparent"
 
-                opacity: root.activePlayer &&
-                         root.activePlayer.canGoNext
-                         ? 1
-                         : 0.4
+                opacity: root.activePlayer && root.activePlayer.canGoNext ? 1 : 0.4
 
                 Text {
                     anchors.centerIn: parent
@@ -765,8 +688,7 @@ Item {
 
                     cursorShape: Qt.PointingHandCursor
 
-                    enabled: root.activePlayer &&
-                             root.activePlayer.canGoNext
+                    enabled: root.activePlayer && root.activePlayer.canGoNext
 
                     onClicked: {
                         root.activePlayer.next();

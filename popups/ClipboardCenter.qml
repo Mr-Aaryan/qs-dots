@@ -1,4 +1,7 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
+import QtCore
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
@@ -26,86 +29,70 @@ Item {
     Process {
         id: listProcess
 
-        command: [
-            "cliphist",
-            "list"
-        ]
+        command: ["cliphist", "list"]
 
         stdout: StdioCollector {
             onStreamFinished: {
-                clipboardCenter.parseClipboardList(this.text)
+                clipboardCenter.parseClipboardList(this.text);
             }
         }
     }
 
     function refresh() {
-        listProcess.running = false
-        listProcess.running = true
+        listProcess.running = false;
+        listProcess.running = true;
     }
 
     function parseClipboardList(output) {
-        const lines = output.split("\n")
-        const items = []
+        const lines = output.split("\n");
+        const items = [];
 
         for (let i = 0; i < lines.length; i++) {
-            const line = lines[i]
+            const line = lines[i];
 
             if (line.trim() === "")
-                continue
-
-            const separator = line.indexOf("\t")
+                continue;
+            const separator = line.indexOf("\t");
 
             if (separator === -1)
-                continue
-
-            const id = line.substring(0, separator)
-            const text = line.substring(separator + 1)
+                continue;
+            const id = line.substring(0, separator);
+            const text = line.substring(separator + 1);
 
             // Example:
             //
             // [[ binary data 324 KiB png 494x404 ]]
             //
-            const imageMatch = text.match(
-                /^\[\[\s*binary data\s+.*?\s+([a-zA-Z0-9]+)\s+(\d+)x(\d+)\s*\]\]$/
-            )
+            const imageMatch = text.match(/^\[\[\s*binary data\s+.*?\s+([a-zA-Z0-9]+)\s+(\d+)x(\d+)\s*\]\]$/);
 
-            const isImage = imageMatch !== null
+            const isImage = imageMatch !== null;
 
-            let extension = ""
-            let imageWidth = 0
-            let imageHeight = 0
+            let extension = "";
+            let imageWidth = 0;
+            let imageHeight = 0;
 
             if (isImage) {
-                extension = imageMatch[1].toLowerCase()
-                imageWidth = Number(imageMatch[2])
-                imageHeight = Number(imageMatch[3])
+                extension = imageMatch[1].toLowerCase();
+                imageWidth = Number(imageMatch[2]);
+                imageHeight = Number(imageMatch[3]);
             }
 
             items.push({
                 id: id,
                 text: text,
                 rawLine: line,
-
                 isImage: isImage,
-
                 extension: extension,
                 imageWidth: imageWidth,
                 imageHeight: imageHeight,
-
-                imagePath: isImage
-                    ? "/tmp/quickshell-clipboard-" +
-                      id +
-                      "." +
-                      extension
-                    : "",
-
+                imagePath: isImage ? "/tmp/quickshell-clipboard-" + id + "." + extension : "",
                 imageReady: false
-            })
+            });
         }
 
-        clipboardItems = items
+        clipboardItems = items;
 
-        prepareImages()
+        prepareImages();
     }
 
     // ============================================================
@@ -114,17 +101,16 @@ Item {
 
     function prepareImages() {
         for (let i = 0; i < clipboardItems.length; i++) {
-            const item = clipboardItems[i]
+            const item = clipboardItems[i];
 
             if (!item.isImage)
-                continue
-
-            decodeImage(item)
+                continue;
+            decodeImage(item);
         }
     }
 
     function decodeImage(item) {
-        const tempPath = item.imagePath + ".tmp"
+        const tempPath = item.imagePath + ".tmp";
 
         const process = Qt.createQmlObject(`
             import Quickshell
@@ -163,19 +149,19 @@ Item {
                     destroy()
                 }
             }
-        `, clipboardCenter)
+        `, clipboardCenter);
 
-        process.running = true
+        process.running = true;
     }
 
     function markImageReady(id) {
         for (let i = 0; i < clipboardItems.length; i++) {
             if (clipboardItems[i].id === id) {
-                clipboardItems[i].imageReady = true
+                clipboardItems[i].imageReady = true;
 
-                clipboardItems = clipboardItems.slice()
+                clipboardItems = clipboardItems.slice();
 
-                break
+                break;
             }
         }
     }
@@ -185,14 +171,14 @@ Item {
     // ============================================================
 
     property var filteredItems: {
-        const query = searchText.trim().toLowerCase()
+        const query = searchText.trim().toLowerCase();
 
         if (query === "")
-            return clipboardItems
+            return clipboardItems;
 
         return clipboardItems.filter(item => {
-            return item.text.toLowerCase().includes(query)
-        })
+            return item.text.toLowerCase().includes(query);
+        });
     }
 
     // ============================================================
@@ -204,31 +190,17 @@ Item {
 
         running: false
 
-        onExited: function(exitCode, exitStatus) {
-            if (exitCode === 0) {
-                clipboardCenter.close()
-            } else {
-                console.log(
-                    "Failed to copy clipboard item. Exit code:",
-                    exitCode
-                )
-            }
+        onRunningChanged: if (!running) {
+            clipboardCenter.close();
         }
     }
 
     function copyItem(item) {
         if (copyProcess.running)
-            return
+            return;
+        copyProcess.command = ["sh", "-c", "printf '%s\\n' \"$1\" | cliphist decode | wl-copy", "clipboard-copy", item.rawLine];
 
-        copyProcess.command = [
-            "sh",
-            "-c",
-            "printf '%s\\n' \"$1\" | cliphist decode | wl-copy",
-            "clipboard-copy",
-            item.rawLine
-        ]
-
-        copyProcess.running = true
+        copyProcess.running = true;
     }
 
     // ============================================================
@@ -240,36 +212,23 @@ Item {
 
         running: false
 
-        onExited: function(exitCode, exitStatus) {
-            if (exitCode === 0) {
-                clipboardItems = []
-                searchText = ""
-                searchInput.text = ""
+        onRunningChanged: if (!running) {
+            clipboardCenter.clipboardItems = [];
+            clipboardCenter.searchText = "";
+            searchInput.text = "";
 
-                /*
-                 * Refresh after wiping so the UI reflects the
-                 * actual cliphist database.
-                 */
-                clipboardCenter.refresh()
-            } else {
-                console.log(
-                    "Failed to wipe clipboard history. Exit code:",
-                    exitCode
-                )
-            }
+            /*
+             * Refresh after wiping so the UI reflects the
+             * actual cliphist database.
+             */
+            clipboardCenter.refresh();
         }
     }
 
     function wipeClipboard() {
-        if (wipeProcess.running)
-            return
+        wipeProcess.command = ["cliphist", "wipe"];
 
-        wipeProcess.command = [
-            "cliphist",
-            "wipe"
-        ]
-
-        wipeProcess.running = true
+        wipeProcess.running = true;
     }
 
     // ============================================================
@@ -277,30 +236,30 @@ Item {
     // ============================================================
 
     function open() {
-        searchText = ""
-        searchInput.text = ""
+        searchText = "";
+        searchInput.text = "";
 
-        refresh()
+        refresh();
 
-        opened = true
+        opened = true;
 
-        searchFocusTimer.restart()
+        searchFocusTimer.restart();
     }
 
     function close() {
-        opened = false
+        opened = false;
 
-        searchText = ""
-        searchInput.text = ""
+        searchText = "";
+        searchInput.text = "";
 
-        searchInput.focus = false
+        searchInput.focus = false;
     }
 
     function toggle() {
         if (opened)
-            close()
+            close();
         else
-            open()
+            open();
     }
 
     Timer {
@@ -311,7 +270,7 @@ Item {
 
         onTriggered: {
             if (clipboardCenter.opened)
-                searchInput.forceActiveFocus()
+                searchInput.forceActiveFocus();
         }
     }
 
@@ -401,10 +360,7 @@ Item {
 
                             radius: 7
 
-                            color:
-                                wipeMouse.containsMouse
-                                ? Colors.surface
-                                : "transparent"
+                            color: wipeMouse.containsMouse ? Colors.surface : "transparent"
 
                             Behavior on color {
                                 ColorAnimation {
@@ -417,10 +373,7 @@ Item {
 
                                 text: "󰃢"
 
-                                color:
-                                    wipeMouse.containsMouse
-                                    ? Colors.text
-                                    : Colors.subtext
+                                color: wipeMouse.containsMouse ? Colors.text : Colors.subtext
 
                                 font.pixelSize: 17
 
@@ -440,11 +393,10 @@ Item {
 
                                 hoverEnabled: true
 
-                                cursorShape:
-                                    Qt.PointingHandCursor
+                                cursorShape: Qt.PointingHandCursor
 
                                 onClicked: {
-                                    clipboardCenter.wipeClipboard()
+                                    clipboardCenter.wipeClipboard();
                                 }
                             }
                         }
@@ -464,10 +416,9 @@ Item {
 
                         color: Colors.surface
 
-                        border.width:
-                            searchInput.activeFocus ? 1 : 0
+                        border.width: searchInput.activeFocus ? 1 : 0
 
-                        border.color: Colors.blue
+                        border.color: Colors.accent
 
                         RowLayout {
                             anchors.fill: parent
@@ -498,34 +449,29 @@ Item {
 
                                     color: Colors.text
 
-                                    selectionColor: Colors.blue
+                                    selectionColor: Colors.accent
 
-                                    font.family:
-                                        Typography.firaCode
+                                    font.family: Typography.firaCode
 
-                                    font.pixelSize:
-                                        Typography.sm
+                                    font.pixelSize: Typography.sm
 
                                     clip: true
 
-                                    verticalAlignment:
-                                        TextInput.AlignVCenter
+                                    verticalAlignment: TextInput.AlignVCenter
 
                                     onTextChanged: {
-                                        clipboardCenter.searchText = text
+                                        clipboardCenter.searchText = text;
                                     }
 
                                     Keys.onEscapePressed: {
-                                        clipboardCenter.close()
+                                        clipboardCenter.close();
                                     }
                                 }
 
                                 Text {
                                     anchors.fill: parent
 
-                                    visible:
-                                        searchInput.text.length === 0 &&
-                                        !searchInput.activeFocus
+                                    visible: searchInput.text.length === 0 && !searchInput.activeFocus
 
                                     text: "Search clipboard..."
 
@@ -533,23 +479,19 @@ Item {
 
                                     opacity: 0.5
 
-                                    font.family:
-                                        Typography.firaCode
+                                    font.family: Typography.firaCode
 
-                                    font.pixelSize:
-                                        Typography.sm
+                                    font.pixelSize: Typography.sm
 
-                                    verticalAlignment:
-                                        Text.AlignVCenter
+                                    verticalAlignment: Text.AlignVCenter
 
-                                    textFormat:
-                                        Text.PlainText
+                                    textFormat: Text.PlainText
 
                                     MouseArea {
                                         anchors.fill: parent
 
                                         onClicked: {
-                                            searchInput.forceActiveFocus()
+                                            searchInput.forceActiveFocus();
                                         }
                                     }
                                 }
@@ -560,7 +502,7 @@ Item {
                             anchors.fill: parent
 
                             onClicked: {
-                                searchInput.forceActiveFocus()
+                                searchInput.forceActiveFocus();
                             }
                         }
                     }
@@ -570,35 +512,26 @@ Item {
                     // =================================================
 
                     Text {
-                        visible:
-                            clipboardCenter.filteredItems.length === 0
+                        visible: clipboardCenter.filteredItems.length === 0
 
                         Layout.fillWidth: true
                         Layout.fillHeight: true
 
-                        horizontalAlignment:
-                            Text.AlignHCenter
+                        horizontalAlignment: Text.AlignHCenter
 
-                        verticalAlignment:
-                            Text.AlignVCenter
+                        verticalAlignment: Text.AlignVCenter
 
-                        text:
-                            clipboardCenter.clipboardItems.length === 0
-                            ? "No clipboard history"
-                            : "No results"
+                        text: clipboardCenter.clipboardItems.length === 0 ? "No clipboard history" : "No results"
 
                         color: Colors.subtext
 
-                        font.family:
-                            Typography.firaCode
+                        font.family: Typography.firaCode
 
-                        font.pixelSize:
-                            Typography.md
+                        font.pixelSize: Typography.md
 
                         opacity: 0.6
 
-                        textFormat:
-                            Text.PlainText
+                        textFormat: Text.PlainText
                     }
 
                     // =================================================
@@ -608,8 +541,7 @@ Item {
                     ListView {
                         id: clipboardList
 
-                        visible:
-                            clipboardCenter.filteredItems.length > 0
+                        visible: clipboardCenter.filteredItems.length > 0
 
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -618,8 +550,7 @@ Item {
 
                         spacing: 6
 
-                        model:
-                            clipboardCenter.filteredItems
+                        model: clipboardCenter.filteredItems
 
                         delegate: Rectangle {
                             id: clipboardDelegate
@@ -629,17 +560,11 @@ Item {
 
                             width: clipboardList.width
 
-                            height:
-                                clipboardDelegate.modelData.isImage
-                                ? 100
-                                : 54
+                            height: clipboardDelegate.modelData.isImage ? 100 : 54
 
                             radius: 8
 
-                            color:
-                                clipboardMouse.containsMouse
-                                ? Colors.surface
-                                : "transparent"
+                            color: clipboardMouse.containsMouse ? Colors.surface : "transparent"
 
                             Behavior on color {
                                 ColorAnimation {
@@ -670,21 +595,17 @@ Item {
                                     Text {
                                         anchors.centerIn: parent
 
-                                        text:
-                                            `${clipboardDelegate.index + 1}`
+                                        text: `${clipboardDelegate.index + 1}`
 
                                         color: Colors.subtext
 
-                                        font.family:
-                                            Typography.firaCode
+                                        font.family: Typography.firaCode
 
-                                        font.pixelSize:
-                                            Typography.xs
+                                        font.pixelSize: Typography.xs
 
                                         font.bold: true
 
-                                        textFormat:
-                                            Text.PlainText
+                                        textFormat: Text.PlainText
                                     }
                                 }
 
@@ -693,8 +614,7 @@ Item {
                                 // =====================================
 
                                 Rectangle {
-                                    visible:
-                                        clipboardDelegate.modelData.isImage
+                                    visible: clipboardDelegate.modelData.isImage
 
                                     Layout.preferredWidth: 82
                                     Layout.preferredHeight: 82
@@ -712,17 +632,11 @@ Item {
 
                                         anchors.margins: 2
 
-                                        visible:
-                                            clipboardDelegate.modelData.imageReady
+                                        visible: clipboardDelegate.modelData.imageReady
 
-                                        source:
-                                            clipboardDelegate.modelData.imageReady
-                                            ? "file://" +
-                                              clipboardDelegate.modelData.imagePath
-                                            : ""
+                                        source: clipboardDelegate.modelData.imageReady ? "file://" + clipboardDelegate.modelData.imagePath : ""
 
-                                        fillMode:
-                                            Image.PreserveAspectFit
+                                        fillMode: Image.PreserveAspectFit
 
                                         asynchronous: true
 
@@ -732,9 +646,7 @@ Item {
                                     Text {
                                         anchors.centerIn: parent
 
-                                        visible:
-                                            !clipboardDelegate.modelData.imageReady ||
-                                            previewImage.status !== Image.Ready
+                                        visible: !clipboardDelegate.modelData.imageReady || previewImage.status !== Image.Ready
 
                                         text: "󰋩"
 
@@ -744,8 +656,7 @@ Item {
 
                                         opacity: 0.5
 
-                                        textFormat:
-                                            Text.PlainText
+                                        textFormat: Text.PlainText
                                     }
                                 }
 
@@ -754,32 +665,25 @@ Item {
                                 // =====================================
 
                                 Text {
-                                    visible:
-                                        !clipboardDelegate.modelData.isImage
+                                    visible: !clipboardDelegate.modelData.isImage
 
                                     Layout.fillWidth: true
 
-                                    text:
-                                        clipboardDelegate.modelData.text
+                                    text: clipboardDelegate.modelData.text
 
                                     color: Colors.text
 
-                                    font.family:
-                                        Typography.firaCode
+                                    font.family: Typography.firaCode
 
-                                    font.pixelSize:
-                                        Typography.sm
+                                    font.pixelSize: Typography.sm
 
                                     maximumLineCount: 2
 
-                                    wrapMode:
-                                        Text.WordWrap
+                                    wrapMode: Text.WordWrap
 
-                                    elide:
-                                        Text.ElideRight
+                                    elide: Text.ElideRight
 
-                                    textFormat:
-                                        Text.PlainText
+                                    textFormat: Text.PlainText
                                 }
 
                                 // =====================================
@@ -787,8 +691,7 @@ Item {
                                 // =====================================
 
                                 ColumnLayout {
-                                    visible:
-                                        clipboardDelegate.modelData.isImage
+                                    visible: clipboardDelegate.modelData.isImage
 
                                     Layout.fillWidth: true
 
@@ -799,36 +702,25 @@ Item {
 
                                         color: Colors.text
 
-                                        font.family:
-                                            Typography.firaCode
+                                        font.family: Typography.firaCode
 
-                                        font.pixelSize:
-                                            Typography.sm
+                                        font.pixelSize: Typography.sm
 
                                         font.bold: true
 
-                                        textFormat:
-                                            Text.PlainText
+                                        textFormat: Text.PlainText
                                     }
 
                                     Text {
-                                        text:
-                                            clipboardDelegate.modelData.imageWidth +
-                                            "x" +
-                                            clipboardDelegate.modelData.imageHeight +
-                                            "  " +
-                                            clipboardDelegate.modelData.extension.toUpperCase()
+                                        text: clipboardDelegate.modelData.imageWidth + "x" + clipboardDelegate.modelData.imageHeight + "  " + clipboardDelegate.modelData.extension.toUpperCase()
 
                                         color: Colors.subtext
 
-                                        font.family:
-                                            Typography.firaCode
+                                        font.family: Typography.firaCode
 
-                                        font.pixelSize:
-                                            Typography.xs
+                                        font.pixelSize: Typography.xs
 
-                                        textFormat:
-                                            Text.PlainText
+                                        textFormat: Text.PlainText
                                     }
                                 }
 
@@ -839,18 +731,14 @@ Item {
                                 Rectangle {
                                     id: copyButton
 
-                                    visible:
-                                        clipboardMouse.containsMouse
+                                    visible: clipboardMouse.containsMouse
 
                                     Layout.preferredWidth: 30
                                     Layout.preferredHeight: 30
 
                                     radius: 7
 
-                                    color:
-                                        copyButtonMouse.containsMouse
-                                        ? Colors.surface
-                                        : "transparent"
+                                    color: copyButtonMouse.containsMouse ? Colors.surface : "transparent"
 
                                     Behavior on color {
                                         ColorAnimation {
@@ -863,15 +751,11 @@ Item {
 
                                         text: "󰆏"
 
-                                        color:
-                                            copyButtonMouse.containsMouse
-                                            ? Colors.text
-                                            : Colors.subtext
+                                        color: copyButtonMouse.containsMouse ? Colors.text : Colors.subtext
 
                                         font.pixelSize: 16
 
-                                        textFormat:
-                                            Text.PlainText
+                                        textFormat: Text.PlainText
 
                                         Behavior on color {
                                             ColorAnimation {
@@ -887,13 +771,10 @@ Item {
 
                                         hoverEnabled: true
 
-                                        cursorShape:
-                                            Qt.PointingHandCursor
+                                        cursorShape: Qt.PointingHandCursor
 
                                         onClicked: {
-                                            clipboardCenter.copyItem(
-                                                clipboardDelegate.modelData
-                                            )
+                                            clipboardCenter.copyItem(clipboardDelegate.modelData);
                                         }
                                     }
                                 }
@@ -910,8 +791,7 @@ Item {
 
                                 hoverEnabled: true
 
-                                cursorShape:
-                                    Qt.PointingHandCursor
+                                cursorShape: Qt.PointingHandCursor
                             }
                         }
                     }

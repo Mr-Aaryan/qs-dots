@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import "../theme"
@@ -36,27 +38,16 @@ Item {
     function isCurrentMonth() {
         const now = new Date();
 
-        return (
-            displayedMonth === now.getMonth() &&
-            displayedYear === now.getFullYear()
-        );
+        return (displayedMonth === now.getMonth() && displayedYear === now.getFullYear());
     }
 
     function isToday(day, month, year) {
         const now = new Date();
 
-        return (
-            day === now.getDate() &&
-            month === now.getMonth() &&
-            year === now.getFullYear()
-        );
+        return (day === now.getDate() && month === now.getMonth() && year === now.getFullYear());
     }
 
-    readonly property string monthName:
-        Qt.locale().monthName(
-            displayedMonth,
-            Locale.LongFormat
-        )
+    readonly property string monthName: Qt.locale().monthName(displayedMonth, Locale.LongFormat)
 
     // ============================================================
     // CALENDAR FUNCTIONS
@@ -111,11 +102,7 @@ Item {
     }
 
     function isSelected(day, month, year) {
-        return (
-            day === selectedDay &&
-            month === selectedMonth &&
-            year === selectedYear
-        );
+        return (day === selectedDay && month === selectedMonth && year === selectedYear);
     }
 
     // ============================================================
@@ -179,9 +166,7 @@ Item {
 
                 radius: 6
 
-                color: previousMouse.containsMouse
-                    ? Colors.surface
-                    : "transparent"
+                color: previousMouse.containsMouse ? Colors.surface : "transparent"
 
                 Text {
                     anchors.centerIn: parent
@@ -220,9 +205,7 @@ Item {
 
                 radius: 6
 
-                color: nextMouse.containsMouse
-                    ? Colors.surface
-                    : "transparent"
+                color: nextMouse.containsMouse ? Colors.surface : "transparent"
 
                 Text {
                     anchors.centerIn: parent
@@ -265,16 +248,14 @@ Item {
 
             radius: 6
 
-            color: todayMouse.containsMouse
-                ? Colors.surface
-                : "transparent"
+            color: todayMouse.containsMouse ? Colors.surface : "transparent"
 
             Text {
                 anchors.centerIn: parent
 
                 text: "Today"
 
-                color: Colors.blue
+                color: Colors.accent
 
                 font.family: Typography.firaCode
                 font.pixelSize: Typography.xs
@@ -311,15 +292,7 @@ Item {
             rowSpacing: 0
 
             Repeater {
-                model: [
-                    "MON",
-                    "TUE",
-                    "WED",
-                    "THU",
-                    "FRI",
-                    "SAT",
-                    "SUN"
-                ]
+                model: ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
 
                 Text {
                     required property string modelData
@@ -373,71 +346,31 @@ Item {
                     // MONTH CALCULATIONS
                     // ------------------------------------------------
 
-                    readonly property int firstDay:
-                        calendar.firstDayOfMonth(
-                            calendar.displayedYear,
-                            calendar.displayedMonth
-                        )
+                    readonly property int firstDay: calendar.firstDayOfMonth(calendar.displayedYear, calendar.displayedMonth)
 
-                    readonly property int daysCurrentMonth:
-                        calendar.daysInMonth(
-                            calendar.displayedYear,
-                            calendar.displayedMonth
-                        )
+                    readonly property int daysCurrentMonth: calendar.daysInMonth(calendar.displayedYear, calendar.displayedMonth)
 
-                    readonly property int rawDay:
-                        index - firstDay + 1
+                    readonly property int rawDay: index - firstDay + 1
 
-                    readonly property bool previousMonthDay:
-                        rawDay < 1
+                    readonly property bool previousMonthDay: rawDay < 1
 
-                    readonly property bool nextMonthDay:
-                        rawDay > daysCurrentMonth
+                    readonly property bool nextMonthDay: rawDay > daysCurrentMonth
 
-                    readonly property int actualDay:
-                        previousMonthDay
-                            ? calendar.daysInMonth(
-                                calendar.displayedYear,
-                                calendar.displayedMonth - 1
-                              ) + rawDay
-                            : nextMonthDay
-                                ? rawDay - daysCurrentMonth
-                                : rawDay
+                    readonly property int actualDay: previousMonthDay ? calendar.daysInMonth(calendar.displayedYear, calendar.displayedMonth - 1) + rawDay : nextMonthDay ? rawDay - daysCurrentMonth : rawDay
 
-                    readonly property int actualMonth:
-                        previousMonthDay
-                            ? calendar.displayedMonth - 1
-                            : nextMonthDay
-                                ? calendar.displayedMonth + 1
-                                : calendar.displayedMonth
+                    readonly property int actualMonth: previousMonthDay ? calendar.displayedMonth - 1 : nextMonthDay ? calendar.displayedMonth + 1 : calendar.displayedMonth
 
-                    readonly property int actualYear:
-                        actualMonth < 0
-                            ? calendar.displayedYear - 1
-                            : actualMonth > 11
-                                ? calendar.displayedYear + 1
-                                : calendar.displayedYear
+                    readonly property int actualYear: actualMonth < 0 ? calendar.displayedYear - 1 : actualMonth > 11 ? calendar.displayedYear + 1 : calendar.displayedYear
 
-                    readonly property bool currentMonthDay:
-                        !previousMonthDay && !nextMonthDay
+                    readonly property bool currentMonthDay: !previousMonthDay && !nextMonthDay
 
                     // ------------------------------------------------
                     // STATE
                     // ------------------------------------------------
 
-                    readonly property bool today:
-                        calendar.isToday(
-                            actualDay,
-                            actualMonth,
-                            actualYear
-                        )
+                    readonly property bool today: calendar.isToday(actualDay, actualMonth, actualYear)
 
-                    readonly property bool selected:
-                        calendar.isSelected(
-                            actualDay,
-                            actualMonth,
-                            actualYear
-                        )
+                    readonly property bool selected: calendar.isSelected(actualDay, actualMonth, actualYear)
 
                     // ------------------------------------------------
                     // DAY
@@ -446,25 +379,16 @@ Item {
                     Rectangle {
                         anchors.centerIn: parent
 
-                        width: Math.min(
-                            parent.width,
-                            parent.height
-                        )
+                        width: Math.min(parent.width, parent.height)
 
                         height: width
 
                         radius: width / 2
 
                         // TODAY ALWAYS GETS PRIORITY
-                        color: dayCell.today
-                            ? Colors.text
-                            : dayCell.selected
-                                ? Colors.surface
-                                : "transparent"
+                        color: dayCell.today ? Colors.text : dayCell.selected ? Colors.surface : "transparent"
 
-                        opacity: dayCell.currentMonthDay
-                            ? 1
-                            : 0.3
+                        opacity: dayCell.currentMonthDay ? 1 : 0.3
 
                         // ------------------------------------------------
                         // DAY NUMBER
@@ -475,16 +399,12 @@ Item {
 
                             text: dayCell.actualDay
 
-                            color: dayCell.today
-                                ? Colors.base
-                                : Colors.text
+                            color: dayCell.today ? Colors.base : Colors.text
 
                             font.family: Typography.firaCode
                             font.pixelSize: Typography.xs
 
-                            font.bold:
-                                dayCell.today ||
-                                dayCell.selected
+                            font.bold: dayCell.today || dayCell.selected
 
                             textFormat: Text.PlainText
                         }
@@ -498,15 +418,10 @@ Item {
 
                             hoverEnabled: true
 
-                            cursorShape:
-                                Qt.PointingHandCursor
+                            cursorShape: Qt.PointingHandCursor
 
                             onClicked: {
-                                calendar.selectDate(
-                                    dayCell.actualDay,
-                                    dayCell.actualMonth,
-                                    dayCell.actualYear
-                                );
+                                calendar.selectDate(dayCell.actualDay, dayCell.actualMonth, dayCell.actualYear);
                             }
                         }
                     }

@@ -21,24 +21,14 @@ PanelWindow {
         right: true
     }
 
-    margins.top: 2
-
     exclusiveZone: barHeight
     aboveWindows: true
     exclusionMode: ExclusionMode.Auto
 
-    // ============================================================
-    // CLICK-THROUGH MASK
-    // ============================================================
-
     mask: Region {
-
-        // Top bar
         Region {
             item: bar
         }
-
-        // Notification center
         Region {
             x: notificationCenter.x
             y: notificationCenter.y
@@ -48,8 +38,6 @@ PanelWindow {
 
             intersection: notificationCenter.opened ? Intersection.Combine : Intersection.Subtract
         }
-
-        // Clipboard center
         Region {
             x: clipboardCenter.x
             y: clipboardCenter.y
@@ -59,8 +47,6 @@ PanelWindow {
 
             intersection: clipboardCenter.opened ? Intersection.Combine : Intersection.Subtract
         }
-
-        // Network center
         Region {
             x: networkCenter.x
             y: networkCenter.y
@@ -70,8 +56,6 @@ PanelWindow {
 
             intersection: networkCenter.opened ? Intersection.Combine : Intersection.Subtract
         }
-
-        // Dashboard center
         Region {
             x: dashboardCenter.x
             y: dashboardCenter.y
@@ -82,10 +66,6 @@ PanelWindow {
             intersection: dashboardCenter.opened ? Intersection.Combine : Intersection.Subtract
         }
     }
-
-    // ============================================================
-    // OUTSIDE CLICK
-    // ============================================================
 
     HyprlandFocusGrab {
         id: popupGrab
@@ -102,10 +82,6 @@ PanelWindow {
         }
     }
 
-    // ============================================================
-    // NOTIFICATION CENTER
-    // ============================================================
-
     NotificationCenter {
         id: notificationCenter
 
@@ -113,10 +89,6 @@ PanelWindow {
 
         y: topbar.barHeight + 8
     }
-
-    // ============================================================
-    // CLIPBOARD CENTER
-    // ============================================================
 
     ClipboardCenter {
         id: clipboardCenter
@@ -126,10 +98,6 @@ PanelWindow {
         y: topbar.barHeight + 8
     }
 
-    // ============================================================
-    // NETWORK CENTER
-    // ============================================================
-
     NetworkCenter {
         id: networkCenter
 
@@ -138,10 +106,6 @@ PanelWindow {
         y: topbar.barHeight + 8
     }
 
-    // ============================================================
-    // DASHBOARD CENTER
-    // ============================================================
-
     DashboardCenter {
         id: dashboardCenter
 
@@ -149,10 +113,6 @@ PanelWindow {
 
         y: topbar.barHeight + 8
     }
-
-    // ============================================================
-    // TOP BAR
-    // ============================================================
 
     Rectangle {
         id: bar
@@ -164,10 +124,6 @@ PanelWindow {
 
         color: Colors.base
         radius: 8
-
-        // ========================================================
-        // LEFT GROUP
-        // ========================================================
 
         Row {
             id: leftGroup
@@ -189,10 +145,6 @@ PanelWindow {
             }
         }
 
-        // ========================================================
-        // CENTER
-        // ========================================================
-
         Clock {
             anchors.centerIn: parent
 
@@ -204,10 +156,6 @@ PanelWindow {
                 dashboardCenter.toggle();
             }
         }
-
-        // ========================================================
-        // RIGHT GROUP
-        // ========================================================
 
         Rectangle {
             id: rightGroupBackground
@@ -230,25 +178,15 @@ PanelWindow {
 
                 spacing: 2
 
-                // ------------------------------------------------
-                // NETWORK
-                // ------------------------------------------------
-
                 NetworkIcon {
                     onClicked: {
-                        // Close other centers first.
                         notificationCenter.close();
                         clipboardCenter.close();
                         dashboardCenter.close();
 
-                        // Toggle network center.
                         networkCenter.toggle();
                     }
                 }
-
-                // ------------------------------------------------
-                // CLIPBOARD
-                // ------------------------------------------------
 
                 ClipboardIcon {
                     onClicked: {
@@ -259,10 +197,6 @@ PanelWindow {
                         clipboardCenter.toggle();
                     }
                 }
-
-                // ------------------------------------------------
-                // NOTIFICATIONS
-                // ------------------------------------------------
 
                 NotificationIcon {
                     onClicked: {

@@ -1,4 +1,7 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
+import QtCore
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
@@ -337,7 +340,7 @@ Item {
 
         command: ["nmcli", "device", "wifi", "rescan"]
 
-        onExited: function (exitCode, exitStatus) {
+        onRunningChanged: if (!running) {
             networkCenter.scanning = false;
 
             networkCenter.refresh();
@@ -360,7 +363,7 @@ Item {
     Process {
         id: wifiToggleProcess
 
-        onExited: function (exitCode, exitStatus) {
+        onRunningChanged: if (!running) {
             networkCenter.refresh();
         }
     }
@@ -398,26 +401,19 @@ Item {
             id: connectError
         }
 
-        onExited: function (exitCode, exitStatus) {
+        onRunningChanged: if (!running) {
             networkCenter.connecting = false;
-
-            if (exitCode === 0) {
-                networkCenter.errorMessage = "";
-
-                networkCenter.detailView = false;
-                networkCenter.selectedNetwork = null;
-                networkCenter.password = "";
-
-                networkCenter.refresh();
-
-                return;
-            }
-
             networkCenter.errorMessage = connectError.text.trim();
 
             if (networkCenter.errorMessage === "") {
                 networkCenter.errorMessage = "Unable to connect";
             }
+
+            networkCenter.detailView = false;
+            networkCenter.selectedNetwork = null;
+            networkCenter.password = "";
+
+            networkCenter.refresh();
         }
     }
 
@@ -482,7 +478,7 @@ Item {
     Process {
         id: disconnectProcess
 
-        onExited: function (exitCode, exitStatus) {
+        onRunningChanged: if (!running) {
             networkCenter.detailView = false;
             networkCenter.selectedNetwork = null;
 
@@ -511,23 +507,17 @@ Item {
             id: forgetError
         }
 
-        onExited: function (exitCode, exitStatus) {
-            if (exitCode === 0) {
-                networkCenter.errorMessage = "";
-
-                networkCenter.detailView = false;
-                networkCenter.selectedNetwork = null;
-
-                networkCenter.refresh();
-
-                return;
-            }
-
+        onRunningChanged: if (!running) {
             networkCenter.errorMessage = forgetError.text.trim();
 
             if (networkCenter.errorMessage === "") {
                 networkCenter.errorMessage = "Unable to forget network";
             }
+
+            networkCenter.detailView = false;
+            networkCenter.selectedNetwork = null;
+
+            networkCenter.refresh();
         }
     }
 
@@ -753,7 +743,7 @@ Item {
                             Text {
                                 text: networkCenter.wifiEnabled ? "󰤨" : "󰤭"
 
-                                color: networkCenter.wifiEnabled ? Colors.blue : Colors.subtext
+                                color: networkCenter.wifiEnabled ? Colors.accent : Colors.subtext
 
                                 font.pixelSize: 20
 
@@ -780,7 +770,7 @@ Item {
 
                                 radius: 11
 
-                                color: networkCenter.wifiEnabled ? Colors.blue : Colors.subtext
+                                color: networkCenter.wifiEnabled ? Colors.accent : Colors.subtext
 
                                 opacity: networkCenter.wifiEnabled ? 1 : 0.4
 
@@ -862,7 +852,7 @@ Item {
                             Text {
                                 text: networkCenter.signalIcon(networkCenter.connectedSignal)
 
-                                color: Colors.blue
+                                color: Colors.accent
 
                                 font.pixelSize: 20
 
@@ -908,7 +898,7 @@ Item {
                             Text {
                                 text: "✓"
 
-                                color: Colors.blue
+                                color: Colors.accent
 
                                 font.pixelSize: 18
 
@@ -1239,7 +1229,7 @@ Item {
 
                             text: networkCenter.selectedNetwork ? networkCenter.signalIcon(networkCenter.selectedNetwork.signal) : "󰤨"
 
-                            color: Colors.blue
+                            color: Colors.accent
 
                             font.pixelSize: 42
 
@@ -1320,7 +1310,7 @@ Item {
 
                             border.width: passwordInput.activeFocus ? 1 : 0
 
-                            border.color: Colors.blue
+                            border.color: Colors.accent
 
                             RowLayout {
                                 anchors.fill: parent
@@ -1337,7 +1327,7 @@ Item {
 
                                     color: Colors.text
 
-                                    selectionColor: Colors.blue
+                                    selectionColor: Colors.accent
 
                                     font.family: Typography.firaCode
 
@@ -1455,7 +1445,7 @@ Item {
 
                         radius: 8
 
-                        color: connectMouse.containsMouse ? Qt.darker(Colors.blue, 1.08) : Colors.blue
+                        color: connectMouse.containsMouse ? Qt.darker(Colors.accent, 1.08) : Colors.accent
 
                         opacity: networkCenter.connecting ? 0.6 : 1
 
