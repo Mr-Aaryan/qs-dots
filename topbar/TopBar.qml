@@ -266,6 +266,14 @@ PanelWindow {
 
                 spacing: 2
 
+                BatteryIcon {
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                VolumeIcon {
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                
                 ControlCenterIcon {
                     onClicked: {
                         notificationCenter.close();
@@ -276,31 +284,6 @@ PanelWindow {
                         controlCenter.toggle();
                     }
                 }
-
-                BatteryIcon {
-                    anchors.verticalCenter: parent.verticalCenter
-                }
-
-                VolumeIcon {
-                    anchors.verticalCenter: parent.verticalCenter
-                }
-
-                /*
-                 * The network icon used to live here. Wi-Fi and
-                 * Bluetooth are now reached through the chevrons on
-                 * the control center's tiles, which is also the only
-                 * way into the bluetooth list.
-                 */
-
-                // ClipboardIcon {
-                //     onClicked: {
-                //         notificationCenter.close();
-                //         networkCenter.close();
-                //         dashboardCenter.close();
-
-                //         clipboardCenter.toggle();
-                //     }
-                // }
 
                 NotificationIcon {
                     onClicked: {

@@ -4,7 +4,13 @@ import "../theme"
 Text {
     id: root
 
-    property string format: "HH:mm"
+    /*
+     * 12-hour, no leading zero: "4:48 PM".
+     *
+     * `h` drops the leading zero and switches to 12-hour because of
+     * the `AP` that follows it.
+     */
+    property string format: "h:mm AP"
 
     signal clicked
 

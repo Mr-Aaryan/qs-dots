@@ -3,6 +3,7 @@ import Quickshell
 import "./topbar"
 import "./osd"
 import "./launcher"
+import "./session"
 
 ShellRoot {
     id: root
@@ -14,4 +15,6 @@ ShellRoot {
     NotificationToast {}
 
     AppLauncher {}
+
+    PowerMenu {}
 }
