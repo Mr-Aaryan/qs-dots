@@ -2,10 +2,13 @@ import QtQuick
 import Quickshell.Services.UPower
 
 import "../theme"
+import "../shared/components"
 
 /*
  * Status only — there is no battery popup, so unlike the other bar
- * icons this carries no MouseArea and no pointer cursor.
+ * icons this carries no MouseArea and no pointer cursor. Hovering
+ * uses a HoverHandler, which reports the pointer without claiming
+ * clicks the way a MouseArea would.
  *
  * Geometry matches IconButton so the row stays aligned.
  */
@@ -27,6 +30,19 @@ Item {
 
     readonly property var steps: ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
 
+    readonly property string tooltipLabel: {
+        if (!root.active)
+            return "";
+
+        if (root.state === UPowerDeviceState.FullyCharged)
+            return "Battery • Full";
+
+        if (root.state === UPowerDeviceState.Charging)
+            return "Charging • " + root.level + "%";
+
+        return "Battery • " + root.level + "%";
+    }
+
     width: 24
     height: 24
 
@@ -34,6 +50,10 @@ Item {
      * Nothing sensible to show on a machine without a battery.
      */
     visible: root.active
+
+    HoverHandler {
+        id: hover
+    }
 
     Text {
         anchors.centerIn: parent
@@ -73,5 +93,11 @@ Item {
                 duration: 150
             }
         }
+    }
+
+    Tooltip {
+        active: hover.hovered
+
+        label: root.tooltipLabel
     }
 }

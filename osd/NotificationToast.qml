@@ -18,6 +18,9 @@ PanelWindow {
 
     property int barHeight: 28
 
+    // Must match TopBar.topGap — the toasts are a separate window.
+    property int topGap: 6
+
     readonly property int toastWidth: 360
 
     anchors {
@@ -25,7 +28,7 @@ PanelWindow {
         right: true
     }
 
-    margins.top: toasts.barHeight + 10
+    margins.top: toasts.topGap + toasts.barHeight + 10
     margins.right: 10
 
     implicitWidth: toastWidth

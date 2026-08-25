@@ -21,6 +21,13 @@ Item {
 
     property bool opened: false
 
+    /*
+     * Raised by the chevron on a tile that has a fuller panel behind
+     * it. The control center does not own the network center, so it
+     * asks the bar to make the swap rather than reaching across.
+     */
+    signal sectionRequested(string section)
+
     readonly property int panelWidth: 340
     readonly property int panelHeight: 450
 
@@ -53,9 +60,47 @@ Item {
         }
     }
 
+    /*
+     * The SSID currently joined, for the tile's second line. Only
+     * the name is needed here — the signal strength and device are
+     * the network center's business.
+     */
+    property string wifiSsid: ""
+
+    Process {
+        id: wifiSsidProcess
+
+        command: ["nmcli", "-t", "-f", "ACTIVE,SSID", "device", "wifi"]
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                controlCenter.wifiSsid = "";
+
+                const lines = this.text.trim().split("\n");
+
+                for (let i = 0; i < lines.length; i++) {
+                    if (!lines[i])
+                        continue;
+                    const parts = lines[i].split(":");
+
+                    if (parts.length < 2)
+                        continue;
+                    if (parts[0] === "yes") {
+                        controlCenter.wifiSsid = parts[1];
+
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     function refreshWifi() {
         wifiStateProcess.running = false;
         wifiStateProcess.running = true;
+
+        wifiSsidProcess.running = false;
+        wifiSsidProcess.running = true;
     }
 
     function toggleWifi() {
@@ -76,6 +121,15 @@ Item {
     readonly property bool btAvailable: controlCenter.btAdapter !== null
 
     readonly property bool btEnabled: controlCenter.btAvailable && controlCenter.btAdapter.enabled
+
+    /*
+     * First connected device, for the tile's second line. More than
+     * one can be connected at once, but the tile only has room for a
+     * name, and the full list is a chevron away.
+     */
+    readonly property var btConnectedDevice: (controlCenter.btAdapter?.devices?.values ?? []).find(device => device.connected) ?? null
+
+    readonly property string btConnectedName: controlCenter.btConnectedDevice?.name ?? ""
 
     function toggleBluetooth() {
         if (!controlCenter.btAvailable)
@@ -258,16 +312,22 @@ Item {
     // TOGGLES
     // ============================================================
 
+    /*
+     * `section` is the network center section a tile's chevron opens.
+     * Tiles without one are a plain on/off and get no chevron.
+     */
     readonly property var toggles: [
         {
             key: "wifi",
             label: "Wi-Fi",
-            icon: "󰤨"
+            icon: "󰤨",
+            section: "wifi"
         },
         {
             key: "bluetooth",
             label: "Bluetooth",
-            icon: "󰂯"
+            icon: "󰂯",
+            section: "bluetooth"
         },
         {
             key: "dnd",
@@ -312,6 +372,21 @@ Item {
             if (controlCenter.toggles[i].key === key)
                 return controlCenter.toggles[i].label;
         }
+
+        return "";
+    }
+
+    /*
+     * Second line on a tile, shown only when there is something
+     * actually connected. Empty collapses the tile back to a single
+     * centred label.
+     */
+    function toggleSubtitle(key) {
+        if (key === "wifi")
+            return controlCenter.wifiEnabled ? controlCenter.wifiSsid : "";
+
+        if (key === "bluetooth")
+            return controlCenter.btEnabled ? controlCenter.btConnectedName : "";
 
         return "";
     }
@@ -610,6 +685,8 @@ Item {
 
                                 readonly property bool usable: controlCenter.toggleEnabled(toggleTile.modelData.key)
 
+                                readonly property bool expandable: toggleTile.modelData.section !== undefined
+
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 54
 
@@ -632,7 +709,9 @@ Item {
                                     anchors.fill: parent
 
                                     anchors.leftMargin: 12
-                                    anchors.rightMargin: 10
+
+                                    // Leave room for the chevron so the label never runs under it.
+                                    anchors.rightMargin: toggleTile.expandable ? 30 : 10
 
                                     spacing: 9
 
@@ -646,23 +725,65 @@ Item {
                                         textFormat: Text.PlainText
                                     }
 
-                                    Text {
+                                    ColumnLayout {
                                         Layout.fillWidth: true
 
-                                        text: controlCenter.toggleLabel(toggleTile.modelData.key)
+                                        spacing: 0
 
-                                        color: toggleTile.active ? Colors.base : Colors.text
+                                        Text {
+                                            Layout.fillWidth: true
 
-                                        font.family: Typography.ui
+                                            text: controlCenter.toggleLabel(toggleTile.modelData.key)
 
-                                        font.pixelSize: Typography.xs
+                                            color: toggleTile.active ? Colors.base : Colors.text
 
-                                        // Active state is the fill and the inverted text colour.
-                                        font.weight: Typography.normal
+                                            font.family: Typography.ui
 
-                                        elide: Text.ElideRight
+                                            font.pixelSize: Typography.xs
 
-                                        textFormat: Text.PlainText
+                                            // Active state is the fill and the inverted text colour.
+                                            font.weight: Typography.normal
+
+                                            elide: Text.ElideRight
+
+                                            textFormat: Text.PlainText
+                                        }
+
+                                        /*
+                                         * Collapses when nothing is
+                                         * connected, leaving the label
+                                         * centred as before.
+                                         */
+                                        Text {
+                                            visible: text !== ""
+
+                                            Layout.fillWidth: true
+
+                                            text: controlCenter.toggleSubtitle(toggleTile.modelData.key)
+
+                                            /*
+                                             * On the accent fill the
+                                             * body colour would be
+                                             * invisible, so lean on
+                                             * the inverted text at
+                                             * reduced weight instead.
+                                             */
+                                            color: toggleTile.active ? Colors.base : Colors.bodyText
+
+                                            opacity: toggleTile.active ? 0.75 : 1
+
+                                            font.family: Typography.ui
+
+                                            font.pixelSize: Typography.xs - 1
+
+                                            font.weight: Typography.normal
+
+                                            elide: Text.ElideRight
+
+                                            maximumLineCount: 1
+
+                                            textFormat: Text.PlainText
+                                        }
                                     }
                                 }
 
@@ -679,6 +800,64 @@ Item {
 
                                     onClicked: {
                                         controlCenter.pressToggle(toggleTile.modelData.key);
+                                    }
+                                }
+
+                                /*
+                                 * Declared after the tile's MouseArea
+                                 * so it stacks above it and takes the
+                                 * click — the tile would otherwise
+                                 * swallow it and just flip the radio.
+                                 *
+                                 * Left enabled while the tile itself
+                                 * is unusable: you should still be
+                                 * able to open the panel for a radio
+                                 * that is currently off.
+                                 */
+                                Rectangle {
+                                    visible: toggleTile.expandable
+
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 4
+                                    anchors.verticalCenter: parent.verticalCenter
+
+                                    width: 24
+                                    height: 24
+
+                                    radius: 12
+
+                                    color: toggleChevronMouse.containsMouse ? (toggleTile.active ? Colors.base : Colors.surface) : "transparent"
+
+                                    Behavior on color {
+                                        ColorAnimation {
+                                            duration: 120
+                                        }
+                                    }
+
+                                    Text {
+                                        anchors.centerIn: parent
+
+                                        text: "󰅂"
+
+                                        color: toggleChevronMouse.containsMouse ? Colors.accent : (toggleTile.active ? Colors.base : Colors.subtext)
+
+                                        font.pixelSize: 15
+
+                                        textFormat: Text.PlainText
+                                    }
+
+                                    MouseArea {
+                                        id: toggleChevronMouse
+
+                                        anchors.fill: parent
+
+                                        hoverEnabled: true
+
+                                        cursorShape: Qt.PointingHandCursor
+
+                                        onClicked: {
+                                            controlCenter.sectionRequested(toggleTile.modelData.section);
+                                        }
                                     }
                                 }
                             }

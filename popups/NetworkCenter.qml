@@ -5,6 +5,7 @@ import QtCore
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
+import Quickshell.Bluetooth
 
 import "../theme"
 
@@ -17,8 +18,29 @@ Item {
 
     property bool opened: false
 
+    /*
+     * Which half of the panel is showing: "wifi" or "bluetooth".
+     * Set once by open() from whichever control center chevron was
+     * clicked — the panel shows that one section and nothing else,
+     * so this is a drill-down rather than a tabbed view.
+     */
+    property string section: "wifi"
+
+    /*
+     * Raised by the header's back arrow. This panel does not own the
+     * control center it came from, so it asks the bar to make the
+     * swap rather than reaching across.
+     */
+    signal backRequested
+
     readonly property int panelWidth: 320
-    readonly property int panelHeight: 420
+
+    /*
+     * A little taller than the old Wi-Fi-only panel: the bluetooth
+     * section carries two lists, and at 420 the scan results were
+     * down to a single visible row once a few devices were paired.
+     */
+    readonly property int panelHeight: 440
 
     width: panelWidth
     height: panelHeight
@@ -555,10 +577,132 @@ Item {
     }
 
     // ============================================================
+    // BLUETOOTH
+    //
+    // BlueZ is enumerated over DBus, so `defaultAdapter` is null for
+    // the first second or two of the shell's life and again whenever
+    // bluetoothd goes away. Every binding below treats null as
+    // "unavailable" rather than assuming it settles.
+    // ============================================================
+
+    readonly property var btAdapter: Bluetooth.defaultAdapter
+
+    readonly property bool btAvailable: networkCenter.btAdapter !== null
+
+    // `enabled` is BlueZ's Powered property.
+    readonly property bool btEnabled: networkCenter.btAvailable && networkCenter.btAdapter.enabled
+
+    readonly property bool btScanning: networkCenter.btAvailable && networkCenter.btAdapter.discovering
+
+    readonly property var btDevices: networkCenter.btAdapter?.devices?.values ?? []
+
+    /*
+     * Paired devices stay listed while the adapter is off — BlueZ
+     * remembers them — so this is not gated on btEnabled.
+     */
+    readonly property var btPaired: networkCenter.btDevices.filter(device => device.paired || device.bonded)
+
+    readonly property var btNearby: networkCenter.btDevices.filter(device => !device.paired && !device.bonded)
+
+    function toggleBluetooth() {
+        if (!networkCenter.btAvailable)
+            return;
+        networkCenter.btAdapter.enabled = !networkCenter.btAdapter.enabled;
+    }
+
+    /*
+     * Discovery is a battery drain, so it is only ever on while this
+     * panel is showing the bluetooth section.
+     */
+    function setBtDiscovery(active) {
+        if (!networkCenter.btAvailable || !networkCenter.btEnabled)
+            return;
+        networkCenter.btAdapter.discovering = active;
+    }
+
+    /*
+     * A tap on a device row means the obvious thing for whatever
+     * state it is in.
+     */
+    function pressDevice(device) {
+        if (!device)
+            return;
+        if (device.connected) {
+            device.disconnect();
+
+            return;
+        }
+
+        if (device.paired || device.bonded) {
+            device.connect();
+
+            return;
+        }
+
+        device.pair();
+    }
+
+    /*
+     * BlueZ reports a freedesktop icon name; the rest of the shell
+     * draws Nerd Font glyphs, so translate rather than pulling in an
+     * icon theme for four shapes.
+     */
+    function btIcon(device) {
+        const name = device?.icon ?? "";
+
+        if (name.indexOf("headset") !== -1 || name.indexOf("headphone") !== -1)
+            return "󰋋";
+
+        if (name.indexOf("mouse") !== -1)
+            return "󰦋";
+
+        if (name.indexOf("keyboard") !== -1)
+            return "󰌌";
+
+        if (name.indexOf("phone") !== -1)
+            return "󰄜";
+
+        if (name.indexOf("computer") !== -1)
+            return "󰟀";
+
+        if (name.indexOf("audio") !== -1 || name.indexOf("speaker") !== -1)
+            return "󰓃";
+
+        if (name.indexOf("input-gaming") !== -1)
+            return "󰊴";
+
+        return "󰂯";
+    }
+
+    function btSubtitle(device) {
+        if (!device)
+            return "";
+        if (device.pairing)
+            return "Pairing…";
+        if (device.connected) {
+            /*
+             * batteryAvailable gates this because a disconnected
+             * device reports a flat 0 rather than "unknown".
+             */
+            if (device.batteryAvailable)
+                return "Connected • " + Math.round(device.battery * 100) + "%";
+
+            return "Connected";
+        }
+
+        if (device.paired || device.bonded)
+            return "Paired";
+
+        return "Tap to pair";
+    }
+
+    // ============================================================
     // OPEN / CLOSE
     // ============================================================
 
-    function open() {
+    function open(section) {
+        networkCenter.section = section ?? "wifi";
+
         networkCenter.detailView = false;
         networkCenter.selectedNetwork = null;
         networkCenter.password = "";
@@ -573,11 +717,26 @@ Item {
         networkCenter.opened = false;
     }
 
-    function toggle() {
-        if (networkCenter.opened)
+    function toggle(section) {
+        /*
+         * Re-opening on a different section from the one already
+         * showing switches to it rather than closing the panel.
+         */
+        if (networkCenter.opened && (section === undefined || section === networkCenter.section))
             close();
         else
-            open();
+            open(section);
+    }
+
+    /*
+     * Discovery follows the panel: scanning only while the bluetooth
+     * section is actually on screen, and stopped again on the way
+     * out so it does not sit burning the radio.
+     */
+    readonly property bool btDiscoveryWanted: networkCenter.opened && networkCenter.section === "bluetooth" && networkCenter.btEnabled && !networkCenter.detailView
+
+    onBtDiscoveryWantedChanged: {
+        networkCenter.setBtDiscovery(networkCenter.btDiscoveryWanted);
     }
 
     // ============================================================
@@ -642,6 +801,181 @@ Item {
                 border.color: Colors.surface
 
                 // =================================================
+                // BLUETOOTH DEVICE ROW
+                //
+                // Shared by both device lists: a row looks the same
+                // whether the device is already paired or has just
+                // turned up in a scan, and only the subtitle and the
+                // trailing affordance differ.
+                // =================================================
+
+                Component {
+                    id: btDeviceRow
+
+                    Rectangle {
+                        id: deviceRow
+
+                        required property var modelData
+
+                        readonly property bool isPaired: deviceRow.modelData.paired || deviceRow.modelData.bonded
+
+                        width: deviceRow.ListView.view ? deviceRow.ListView.view.width : 0
+
+                        height: 48
+
+                        radius: 8
+
+                        color: deviceMouse.containsMouse ? Colors.surface : "transparent"
+
+                        Behavior on color {
+                            ColorAnimation {
+                                duration: 100
+                            }
+                        }
+
+                        RowLayout {
+                            anchors.fill: parent
+
+                            anchors.leftMargin: 8
+                            anchors.rightMargin: 8
+
+                            spacing: 8
+
+                            Text {
+                                text: networkCenter.btIcon(deviceRow.modelData)
+
+                                color: deviceRow.modelData.connected ? Colors.accent : Colors.text
+
+                                font.pixelSize: 19
+
+                                textFormat: Text.PlainText
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+
+                                spacing: 1
+
+                                Text {
+                                    // Unnamed devices only ever report a MAC.
+                                    text: deviceRow.modelData.name !== "" ? deviceRow.modelData.name : deviceRow.modelData.address
+
+                                    color: Colors.text
+
+                                    font.family: Typography.ui
+
+                                    font.pixelSize: Typography.sm
+
+                                    elide: Text.ElideRight
+
+                                    Layout.fillWidth: true
+
+                                    textFormat: Text.PlainText
+                                }
+
+                                Text {
+                                    text: networkCenter.btSubtitle(deviceRow.modelData)
+
+                                    color: Colors.subtext
+
+                                    font.family: Typography.ui
+
+                                    font.pixelSize: Typography.xs
+
+                                    elide: Text.ElideRight
+
+                                    Layout.fillWidth: true
+
+                                    textFormat: Text.PlainText
+                                }
+                            }
+
+                            Text {
+                                visible: deviceRow.modelData.connected
+
+                                text: "✓"
+
+                                color: Colors.accent
+
+                                font.pixelSize: 18
+
+                                textFormat: Text.PlainText
+                            }
+
+                            /*
+                             * Kept visible rather than revealed on
+                             * hover: a hover-gated button carrying
+                             * its own hover-enabled MouseArea steals
+                             * the row's hover, hides itself, and
+                             * flickers.
+                             */
+                            Rectangle {
+                                visible: deviceRow.isPaired
+
+                                Layout.preferredWidth: 24
+                                Layout.preferredHeight: 24
+
+                                radius: 7
+
+                                color: forgetMouse.containsMouse ? Colors.error : "transparent"
+
+                                Behavior on color {
+                                    ColorAnimation {
+                                        duration: 120
+                                    }
+                                }
+
+                                Text {
+                                    anchors.centerIn: parent
+
+                                    text: "󰅖"
+
+                                    color: forgetMouse.containsMouse ? Colors.base : Colors.subtext
+
+                                    font.pixelSize: 13
+
+                                    textFormat: Text.PlainText
+                                }
+
+                                MouseArea {
+                                    id: forgetMouse
+
+                                    anchors.fill: parent
+
+                                    hoverEnabled: true
+
+                                    cursorShape: Qt.PointingHandCursor
+
+                                    onClicked: {
+                                        deviceRow.modelData.forget();
+                                    }
+                                }
+                            }
+                        }
+
+                        /*
+                         * Declared last and pushed under the row so
+                         * the forget button gets its own clicks.
+                         */
+                        MouseArea {
+                            id: deviceMouse
+
+                            anchors.fill: parent
+
+                            z: -1
+
+                            hoverEnabled: true
+
+                            cursorShape: Qt.PointingHandCursor
+
+                            onClicked: {
+                                networkCenter.pressDevice(deviceRow.modelData);
+                            }
+                        }
+                    }
+                }
+
+                // =================================================
                 // MAIN NETWORK LIST
                 // =================================================
 
@@ -661,8 +995,57 @@ Item {
                     RowLayout {
                         Layout.fillWidth: true
 
+                        spacing: 4
+
+                        /*
+                         * Returns to the control center, which is the
+                         * only way into this panel now that the bar
+                         * icon is gone.
+                         */
+                        Rectangle {
+                            Layout.preferredWidth: 28
+                            Layout.preferredHeight: 28
+
+                            radius: 7
+
+                            color: headerBackMouse.containsMouse ? Colors.surface : "transparent"
+
+                            Behavior on color {
+                                ColorAnimation {
+                                    duration: 120
+                                }
+                            }
+
+                            Text {
+                                anchors.centerIn: parent
+
+                                text: "󰁍"
+
+                                color: headerBackMouse.containsMouse ? Colors.text : Colors.subtext
+
+                                font.pixelSize: 17
+
+                                textFormat: Text.PlainText
+                            }
+
+                            MouseArea {
+                                id: headerBackMouse
+
+                                anchors.fill: parent
+
+                                hoverEnabled: true
+
+                                cursorShape: Qt.PointingHandCursor
+
+                                onClicked: {
+                                    networkCenter.backRequested();
+                                }
+                            }
+                        }
+
                         Text {
-                            text: "Network"
+                            // The panel only ever shows one section now.
+                            text: networkCenter.section === "bluetooth" ? "Bluetooth" : "Wi-Fi"
 
                             color: Colors.text
 
@@ -713,6 +1096,19 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
 
                                 onClicked: {
+                                    if (networkCenter.section === "bluetooth") {
+                                        /*
+                                         * Bounce discovery — BlueZ
+                                         * keeps handing back the same
+                                         * cached results otherwise.
+                                         */
+                                        networkCenter.setBtDiscovery(false);
+
+                                        networkCenter.setBtDiscovery(true);
+
+                                        return;
+                                    }
+
                                     networkCenter.scan();
                                 }
                             }
@@ -724,6 +1120,8 @@ Item {
                     // =============================================
 
                     Rectangle {
+                        visible: networkCenter.section === "wifi"
+
                         Layout.fillWidth: true
 
                         Layout.preferredHeight: 48
@@ -813,7 +1211,7 @@ Item {
                     // =============================================
 
                     Text {
-                        visible: networkCenter.connectedSsid !== ""
+                        visible: networkCenter.section === "wifi" && networkCenter.connectedSsid !== ""
 
                         text: "Connected"
 
@@ -831,7 +1229,7 @@ Item {
                     }
 
                     Rectangle {
-                        visible: networkCenter.connectedSsid !== ""
+                        visible: networkCenter.section === "wifi" && networkCenter.connectedSsid !== ""
 
                         Layout.fillWidth: true
 
@@ -936,7 +1334,7 @@ Item {
                     // =============================================
 
                     Text {
-                        visible: networkCenter.networks.length > 0
+                        visible: networkCenter.section === "wifi" && networkCenter.networks.length > 0
 
                         text: "Available Networks"
 
@@ -955,6 +1353,8 @@ Item {
 
                     ListView {
                         id: networkList
+
+                        visible: networkCenter.section === "wifi"
 
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -1086,7 +1486,7 @@ Item {
                     // =============================================
 
                     Text {
-                        visible: !networkCenter.wifiEnabled
+                        visible: networkCenter.section === "wifi" && !networkCenter.wifiEnabled
 
                         Layout.fillWidth: true
 
@@ -1114,13 +1514,267 @@ Item {
                     // =============================================
 
                     Text {
-                        visible: networkCenter.wifiEnabled && !networkCenter.loading && networkCenter.networks.length === 0
+                        visible: networkCenter.section === "wifi" && networkCenter.wifiEnabled && !networkCenter.loading && networkCenter.networks.length === 0
 
                         Layout.fillWidth: true
 
                         Layout.fillHeight: true
 
                         text: "No networks found"
+
+                        color: Colors.subtext
+
+                        opacity: 0.6
+
+                        horizontalAlignment: Text.AlignHCenter
+
+                        verticalAlignment: Text.AlignVCenter
+
+                        font.family: Typography.ui
+
+                        font.pixelSize: Typography.sm
+
+                        textFormat: Text.PlainText
+                    }
+
+                    // =============================================
+                    // BLUETOOTH TOGGLE
+                    // =============================================
+
+                    Rectangle {
+                        visible: networkCenter.section === "bluetooth" && networkCenter.btAvailable
+
+                        Layout.fillWidth: true
+
+                        Layout.preferredHeight: 48
+
+                        radius: 8
+
+                        color: Colors.surface
+
+                        RowLayout {
+                            anchors.fill: parent
+
+                            anchors.leftMargin: 10
+                            anchors.rightMargin: 10
+
+                            spacing: 10
+
+                            Text {
+                                text: networkCenter.btEnabled ? "󰂯" : "󰂲"
+
+                                color: networkCenter.btEnabled ? Colors.accent : Colors.subtext
+
+                                font.pixelSize: 20
+
+                                textFormat: Text.PlainText
+                            }
+
+                            Text {
+                                text: "Bluetooth"
+
+                                color: Colors.text
+
+                                font.family: Typography.ui
+
+                                font.pixelSize: Typography.sm
+
+                                Layout.fillWidth: true
+
+                                textFormat: Text.PlainText
+                            }
+
+                            Rectangle {
+                                Layout.preferredWidth: 42
+                                Layout.preferredHeight: 22
+
+                                radius: 11
+
+                                color: networkCenter.btEnabled ? Colors.accent : Colors.subtext
+
+                                opacity: networkCenter.btEnabled ? 1 : 0.4
+
+                                Rectangle {
+                                    width: 18
+                                    height: 18
+
+                                    radius: 9
+
+                                    anchors.verticalCenter: parent.verticalCenter
+
+                                    x: networkCenter.btEnabled ? parent.width - width - 2 : 2
+
+                                    color: Colors.text
+
+                                    Behavior on x {
+                                        NumberAnimation {
+                                            duration: 160
+
+                                            easing.type: Easing.OutCubic
+                                        }
+                                    }
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+
+                                    cursorShape: Qt.PointingHandCursor
+
+                                    onClicked: {
+                                        networkCenter.toggleBluetooth();
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // =============================================
+                    // MY DEVICES
+                    // =============================================
+
+                    Text {
+                        visible: networkCenter.section === "bluetooth" && networkCenter.btAvailable && networkCenter.btPaired.length > 0
+
+                        text: "My Devices"
+
+                        color: Colors.subtext
+
+                        font.family: Typography.ui
+
+                        font.pixelSize: Typography.xs
+
+                        font.bold: true
+
+                        textFormat: Text.PlainText
+
+                        Layout.topMargin: 2
+                    }
+
+                    ListView {
+                        id: pairedList
+
+                        visible: networkCenter.section === "bluetooth" && networkCenter.btAvailable && networkCenter.btPaired.length > 0
+
+                        Layout.fillWidth: true
+
+                        /*
+                         * Caps at three rows so a long list of paired
+                         * headphones cannot crowd out the scan
+                         * results below; it scrolls past that.
+                         */
+                        Layout.preferredHeight: Math.min(networkCenter.btPaired.length, 3) * 48
+
+                        clip: true
+
+                        spacing: 2
+
+                        model: networkCenter.btPaired
+
+                        delegate: btDeviceRow
+                    }
+
+                    // =============================================
+                    // AVAILABLE DEVICES
+                    // =============================================
+
+                    RowLayout {
+                        visible: networkCenter.section === "bluetooth" && networkCenter.btAvailable && networkCenter.btEnabled
+
+                        Layout.fillWidth: true
+
+                        Layout.topMargin: 2
+
+                        spacing: 6
+
+                        Text {
+                            text: "Available"
+
+                            color: Colors.subtext
+
+                            font.family: Typography.ui
+
+                            font.pixelSize: Typography.xs
+
+                            font.bold: true
+
+                            textFormat: Text.PlainText
+                        }
+
+                        Text {
+                            visible: networkCenter.btScanning
+
+                            text: "scanning…"
+
+                            color: Colors.subtext
+
+                            opacity: 0.7
+
+                            font.family: Typography.ui
+
+                            font.pixelSize: Typography.xs
+
+                            textFormat: Text.PlainText
+
+                            Layout.fillWidth: true
+                        }
+                    }
+
+                    ListView {
+                        id: nearbyList
+
+                        visible: networkCenter.section === "bluetooth" && networkCenter.btAvailable && networkCenter.btEnabled
+
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+
+                        clip: true
+
+                        spacing: 2
+
+                        model: networkCenter.btNearby
+
+                        delegate: btDeviceRow
+                    }
+
+                    // =============================================
+                    // BLUETOOTH EMPTY STATES
+                    // =============================================
+
+                    Text {
+                        visible: networkCenter.section === "bluetooth" && networkCenter.btAvailable && !networkCenter.btEnabled
+
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+
+                        text: "Bluetooth is turned off"
+
+                        color: Colors.subtext
+
+                        opacity: 0.7
+
+                        horizontalAlignment: Text.AlignHCenter
+
+                        verticalAlignment: Text.AlignVCenter
+
+                        font.family: Typography.ui
+
+                        font.pixelSize: Typography.sm
+
+                        textFormat: Text.PlainText
+                    }
+
+                    /*
+                     * Null adapter means bluetoothd is not up yet, or
+                     * not running at all — distinct from the radio
+                     * being switched off.
+                     */
+                    Text {
+                        visible: networkCenter.section === "bluetooth" && !networkCenter.btAvailable
+
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+
+                        text: "No Bluetooth adapter"
 
                         color: Colors.subtext
 

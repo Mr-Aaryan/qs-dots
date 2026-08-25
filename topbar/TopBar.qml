@@ -12,6 +12,16 @@ PanelWindow {
     property int barHeight: 28
     property int barWidth: 520
 
+    /*
+     * Breathing room between the screen edge and the bar. Added to
+     * the exclusive zone as well, so tiled windows start below the
+     * gap rather than sliding under it.
+     *
+     * NotificationToast mirrors this — the toasts are their own
+     * window and have to be pushed down by the same amount.
+     */
+    property int topGap: 2
+
     implicitHeight: barHeight + Math.max(notificationCenter.panelHeight, Math.max(clipboardCenter.panelHeight, Math.max(networkCenter.panelHeight, Math.max(dashboardCenter.panelHeight, controlCenter.panelHeight)))) + 16
     color: "transparent"
 
@@ -21,7 +31,9 @@ PanelWindow {
         right: true
     }
 
-    exclusiveZone: barHeight
+    margins.top: topbar.topGap
+
+    exclusiveZone: barHeight + topbar.topGap
     aboveWindows: true
     exclusionMode: ExclusionMode.Auto
 
@@ -149,6 +161,13 @@ PanelWindow {
         x: (topbar.width - topbar.barWidth) / 2 + topbar.barWidth - width - 10
 
         y: topbar.barHeight + 8
+
+        // The header's back arrow returns to where the chevron came from.
+        onBackRequested: {
+            networkCenter.close();
+
+            controlCenter.open();
+        }
     }
 
     DashboardCenter {
@@ -165,6 +184,21 @@ PanelWindow {
         x: (topbar.width - topbar.barWidth) / 2 + topbar.barWidth - width - 10
 
         y: topbar.barHeight + 8
+
+        /*
+         * A tile chevron hands off to the network center, which the
+         * bar owns — the control center gets out of the way first so
+         * the two are never open over each other.
+         */
+        onSectionRequested: section => {
+            controlCenter.close();
+
+            notificationCenter.close();
+            clipboardCenter.close();
+            dashboardCenter.close();
+
+            networkCenter.open(section);
+        }
     }
 
     Rectangle {
@@ -251,16 +285,12 @@ PanelWindow {
                     anchors.verticalCenter: parent.verticalCenter
                 }
 
-                NetworkIcon {
-                    onClicked: {
-                        notificationCenter.close();
-                        clipboardCenter.close();
-                        dashboardCenter.close();
-                        controlCenter.close();
-
-                        networkCenter.toggle();
-                    }
-                }
+                /*
+                 * The network icon used to live here. Wi-Fi and
+                 * Bluetooth are now reached through the chevrons on
+                 * the control center's tiles, which is also the only
+                 * way into the bluetooth list.
+                 */
 
                 // ClipboardIcon {
                 //     onClicked: {
