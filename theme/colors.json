@@ -1,0 +1,10 @@
+{
+    "base": "#1c2024",
+    "surface": "#323539",
+    "subtext": "#8c9199",
+    "text": "#e0e2e8",
+    "accent": "#9ccbfb",
+    "error": "#ffb4ab",
+    "defaultClr": "#272a2f",
+    "gray": "#42474e"
+}

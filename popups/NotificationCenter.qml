@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Services.Notifications
 
 import "../theme"
+import "../services"
 
 Item {
     id: notificationCenter
@@ -25,43 +25,11 @@ Item {
     // ============================================================
 
     /*
-     * We intentionally maintain our own array instead of directly
-     * using notificationServer.trackedNotifications as the UI model.
-     *
-     * Reassigning this array makes QML bindings update reliably.
+     * Mirrors the shared notification service. The server itself
+     * lives there because only one may exist in the shell, and the
+     * on-screen toasts read from the same store.
      */
-    property var notifications: []
-
-    // ============================================================
-    // NOTIFICATION SERVER
-    // ============================================================
-
-    NotificationServer {
-        id: notificationServer
-
-        bodySupported: true
-        bodyMarkupSupported: false
-
-        onNotification: function (notification) {
-            notification.tracked = true;
-
-            const entry = {
-                notification: notification,
-                timestamp: new Date()
-            };
-
-            /*
-             * Add newest notification to the beginning.
-             */
-            notificationCenter.notifications = [entry, ...notificationCenter.notifications];
-
-            console.log("NOTIFICATION RECEIVED:", notification.appName, "|", notification.summary, "|", notification.body);
-
-            console.log("TRACKED:", notification.tracked);
-
-            console.log("COUNT:", notificationCenter.notifications.length);
-        }
-    }
+    readonly property var notifications: Notifications.notifications
 
     // ============================================================
     // DATE HELPERS
@@ -145,22 +113,7 @@ Item {
     // ============================================================
 
     function dismissNotification(entry) {
-        if (!entry)
-            return;
-        const notification = entry.notification;
-
-        notification.dismiss();
-
-        const updated = [];
-
-        for (let i = 0; i < notificationCenter.notifications.length; i++) {
-            const current = notificationCenter.notifications[i];
-
-            if (current !== entry)
-                updated.push(current);
-        }
-
-        notificationCenter.notifications = updated;
+        Notifications.dismissNotification(entry);
     }
 
     // ============================================================
@@ -168,13 +121,7 @@ Item {
     // ============================================================
 
     function clearAll() {
-        const current = notificationCenter.notifications;
-
-        for (let i = 0; i < current.length; i++) {
-            current[i].notification.dismiss();
-        }
-
-        notificationCenter.notifications = [];
+        Notifications.clearAll();
     }
 
     // ============================================================
@@ -242,7 +189,7 @@ Item {
 
                 radius: 12
 
-                color: Colors.base
+                color: Colors.panel
 
                 border.width: 1
                 border.color: Colors.surface

@@ -9,4 +9,6 @@ ShellRoot {
     TopBar {}
 
     Osd {}
+
+    NotificationToast {}
 }

@@ -12,7 +12,7 @@ PanelWindow {
     property int barHeight: 28
     property int barWidth: 520
 
-    implicitHeight: barHeight + Math.max(notificationCenter.panelHeight, Math.max(clipboardCenter.panelHeight, Math.max(networkCenter.panelHeight, dashboardCenter.panelHeight))) + 16
+    implicitHeight: barHeight + Math.max(notificationCenter.panelHeight, Math.max(clipboardCenter.panelHeight, Math.max(networkCenter.panelHeight, Math.max(dashboardCenter.panelHeight, controlCenter.panelHeight)))) + 16
     color: "transparent"
 
     anchors {
@@ -77,6 +77,16 @@ PanelWindow {
 
             intersection: Intersection.Combine
         }
+
+        Region {
+            x: controlCenter.x
+            y: controlCenter.y
+
+            width: controlCenter.opened ? controlCenter.width : 0
+            height: controlCenter.opened ? controlCenter.height : 0
+
+            intersection: Intersection.Combine
+        }
     }
 
     HyprlandFocusGrab {
@@ -84,13 +94,36 @@ PanelWindow {
 
         windows: [topbar]
 
-        active: notificationCenter.opened || clipboardCenter.opened || networkCenter.opened || dashboardCenter.opened
+        active: notificationCenter.opened || clipboardCenter.opened || networkCenter.opened || dashboardCenter.opened || controlCenter.opened
 
         onCleared: {
             notificationCenter.close();
             clipboardCenter.close();
             networkCenter.close();
             dashboardCenter.close();
+            controlCenter.close();
+        }
+    }
+
+    /*
+     * Exposed to Hyprland through the global-shortcuts protocol as
+     * "quickshell:clipboard". Bind it on the Hyprland side with:
+     *
+     *   hl.bind(mainMod .. " + SHIFT + V", hl.dsp.global("quickshell:clipboard"))
+     */
+    GlobalShortcut {
+        appid: "quickshell"
+        name: "clipboard"
+
+        description: "Toggle the clipboard history popup"
+
+        onPressed: {
+            notificationCenter.close();
+            networkCenter.close();
+            dashboardCenter.close();
+            controlCenter.close();
+
+            clipboardCenter.toggle();
         }
     }
 
@@ -126,6 +159,14 @@ PanelWindow {
         y: topbar.barHeight + 8
     }
 
+    ControlCenter {
+        id: controlCenter
+
+        x: (topbar.width - topbar.barWidth) / 2 + topbar.barWidth - width - 10
+
+        y: topbar.barHeight + 8
+    }
+
     Rectangle {
         id: bar
 
@@ -134,7 +175,7 @@ PanelWindow {
 
         anchors.horizontalCenter: parent.horizontalCenter
 
-        color: Colors.base
+        color: Colors.panel
         radius: 8
 
         Row {
@@ -164,6 +205,7 @@ PanelWindow {
                 notificationCenter.close();
                 clipboardCenter.close();
                 networkCenter.close();
+                controlCenter.close();
 
                 dashboardCenter.toggle();
             }
@@ -190,6 +232,17 @@ PanelWindow {
 
                 spacing: 2
 
+                ControlCenterIcon {
+                    onClicked: {
+                        notificationCenter.close();
+                        clipboardCenter.close();
+                        networkCenter.close();
+                        dashboardCenter.close();
+
+                        controlCenter.toggle();
+                    }
+                }
+
                 BatteryIcon {
                     anchors.verticalCenter: parent.verticalCenter
                 }
@@ -203,26 +256,28 @@ PanelWindow {
                         notificationCenter.close();
                         clipboardCenter.close();
                         dashboardCenter.close();
+                        controlCenter.close();
 
                         networkCenter.toggle();
                     }
                 }
 
-                ClipboardIcon {
-                    onClicked: {
-                        notificationCenter.close();
-                        networkCenter.close();
-                        dashboardCenter.close();
+                // ClipboardIcon {
+                //     onClicked: {
+                //         notificationCenter.close();
+                //         networkCenter.close();
+                //         dashboardCenter.close();
 
-                        clipboardCenter.toggle();
-                    }
-                }
+                //         clipboardCenter.toggle();
+                //     }
+                // }
 
                 NotificationIcon {
                     onClicked: {
                         clipboardCenter.close();
                         networkCenter.close();
                         dashboardCenter.close();
+                        controlCenter.close();
 
                         notificationCenter.toggle();
                     }

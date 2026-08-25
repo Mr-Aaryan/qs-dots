@@ -636,7 +636,7 @@ Item {
 
                 radius: 12
 
-                color: Colors.base
+                color: Colors.panel
 
                 border.width: 1
                 border.color: Colors.surface
