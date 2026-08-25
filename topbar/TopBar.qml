@@ -190,6 +190,14 @@ PanelWindow {
 
                 spacing: 2
 
+                BatteryIcon {
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                VolumeIcon {
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
                 NetworkIcon {
                     onClicked: {
                         notificationCenter.close();
