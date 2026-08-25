@@ -22,6 +22,23 @@ PanelWindow {
      */
     property int topGap: 2
 
+    /*
+     * Toggled by SUPER+SHIFT+W, the way killall -SIGUSR1 used to hide
+     * waybar.
+     *
+     * Hiding unmaps the whole layer surface rather than just making
+     * the bar Rectangle invisible. That is what releases the
+     * exclusive zone, so tiled windows actually reclaim the strip
+     * instead of leaving a gap where the bar used to be.
+     *
+     * The GlobalShortcut below keeps working while unmapped -- it is
+     * a plain object in the tree, not something the surface owns --
+     * so the bar can always be brought back.
+     */
+    property bool barVisible: true
+
+    visible: topbar.barVisible
+
     implicitHeight: barHeight + Math.max(notificationCenter.panelHeight, Math.max(clipboardCenter.panelHeight, Math.max(networkCenter.panelHeight, Math.max(dashboardCenter.panelHeight, controlCenter.panelHeight)))) + 16
     color: "transparent"
 
@@ -114,6 +131,41 @@ PanelWindow {
             networkCenter.close();
             dashboardCenter.close();
             controlCenter.close();
+        }
+    }
+
+    function closePopups() {
+        notificationCenter.close();
+        clipboardCenter.close();
+        networkCenter.close();
+        dashboardCenter.close();
+        controlCenter.close();
+    }
+
+    /*
+     * Exposed to Hyprland through the global-shortcuts protocol as
+     * "quickshell:togglebar":
+     *
+     *   hl.bind(mainMod .. " + SHIFT + W", hl.dsp.global("quickshell:togglebar"))
+     */
+    GlobalShortcut {
+        appid: "quickshell"
+        name: "togglebar"
+
+        description: "Show or hide the top bar"
+
+        onPressed: {
+            /*
+             * Popups live inside this window, so they would be torn
+             * off screen with it while still believing they are open
+             * -- and popupGrab would go on holding a grab for a
+             * surface that no longer exists. Close them on the way
+             * down, and the bar comes back in a clean state.
+             */
+            if (topbar.barVisible)
+                topbar.closePopups();
+
+            topbar.barVisible = !topbar.barVisible;
         }
     }
 
