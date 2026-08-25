@@ -36,6 +36,15 @@ Item {
     property color subtext: "#a6adc8"
     property color text: "#ffffff"
 
+    /*
+     * `subtext` is tuned as a label colour and measures around 3.8:1
+     * against `surface` in a typical matugen palette — under the 4.5:1
+     * that small body copy needs. This is the same hue lifted into
+     * readable range, for notification bodies and anything else that
+     * is a sentence rather than a caption.
+     */
+    readonly property color bodyText: Qt.lighter(root.subtext, 1.28)
+
     property color accent: "#89b4fa"
     readonly property color blue: root.accent
 

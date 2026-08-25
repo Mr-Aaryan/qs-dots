@@ -345,11 +345,20 @@ Item {
 
                                         color: tabButton.active ? Colors.text : Colors.subtext
 
-                                        font.family: Typography.firaCode
+                                        font.family: Typography.ui
 
                                         font.pixelSize: Typography.xs
 
-                                        font.bold: tabButton.active
+                                        /*
+                                         * Constant weight. The active
+                                         * tab is already carried by
+                                         * the fill and the text
+                                         * colour; re-weighting on top
+                                         * of that also reflows the
+                                         * label, which reads as a
+                                         * twitch rather than a state.
+                                         */
+                                        font.weight: Typography.normal
 
                                         textFormat: Text.PlainText
                                     }
@@ -436,7 +445,7 @@ Item {
 
                                 color: Colors.text
 
-                                font.family: Typography.firaCode
+                                font.family: Typography.ui
                                 font.pixelSize: Typography.lg
                             }
 
@@ -445,7 +454,7 @@ Item {
 
                                 color: Colors.subtext
 
-                                font.family: Typography.firaCode
+                                font.family: Typography.ui
                                 font.pixelSize: Typography.xs
                             }
                         }
@@ -621,7 +630,7 @@ Item {
 
                                         color: Colors.text
 
-                                        font.family: Typography.firaCode
+                                        font.family: Typography.ui
                                         font.pixelSize: Typography.sm
                                         font.bold: true
 
@@ -657,7 +666,7 @@ Item {
 
                                         color: Colors.text
 
-                                        font.family: Typography.firaCode
+                                        font.family: Typography.ui
                                         font.pixelSize: Typography.sm
                                         font.bold: true
 
@@ -694,7 +703,7 @@ Item {
 
                                     color: Colors.subtext
 
-                                    font.family: Typography.firaCode
+                                    font.family: Typography.ui
                                     font.pixelSize: Typography.xs
 
                                     width: 105
@@ -886,7 +895,7 @@ Item {
 
                             color: Colors.subtext
 
-                            font.family: Typography.firaCode
+                            font.family: Typography.ui
 
                             font.pixelSize: Typography.xs
 
@@ -905,7 +914,7 @@ Item {
 
                             color: Colors.subtext
 
-                            font.family: Typography.firaCode
+                            font.family: Typography.ui
 
                             font.pixelSize: Typography.xs
 

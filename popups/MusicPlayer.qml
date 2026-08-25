@@ -245,7 +245,7 @@ Item {
 
             color: Colors.subtext
 
-            font.family: Typography.firaCode
+            font.family: Typography.ui
             font.pixelSize: Typography.xs
 
             horizontalAlignment: Text.AlignHCenter
@@ -275,7 +275,7 @@ Item {
 
             color: Colors.text
 
-            font.family: Typography.firaCode
+            font.family: Typography.ui
             font.pixelSize: Typography.sm
             font.bold: true
 
@@ -306,7 +306,7 @@ Item {
 
             color: Colors.subtext
 
-            font.family: Typography.firaCode
+            font.family: Typography.ui
             font.pixelSize: Typography.xs
 
             horizontalAlignment: Text.AlignHCenter
@@ -338,7 +338,7 @@ Item {
 
             opacity: 0.8
 
-            font.family: Typography.firaCode
+            font.family: Typography.ui
             font.pixelSize: Typography.xs
 
             horizontalAlignment: Text.AlignHCenter
@@ -537,8 +537,8 @@ Item {
 
                 color: Colors.subtext
 
-                font.family: Typography.firaCode
-                font.pixelSize: 8
+                font.family: Typography.mono
+                font.pixelSize: Typography.xs
             }
 
             Item {
@@ -554,8 +554,8 @@ Item {
 
                 color: Colors.subtext
 
-                font.family: Typography.firaCode
-                font.pixelSize: 8
+                font.family: Typography.mono
+                font.pixelSize: Typography.xs
             }
         }
 
@@ -730,7 +730,7 @@ Item {
 
                     color: Colors.subtext
 
-                    font.family: Typography.firaCode
+                    font.family: Typography.ui
                     font.pixelSize: Typography.xs
                 }
             }

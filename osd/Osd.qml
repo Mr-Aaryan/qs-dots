@@ -586,7 +586,7 @@ PanelWindow {
 
                         color: Colors.subtext
 
-                        font.family: Typography.firaCode
+                        font.family: Typography.ui
 
                         font.pixelSize: Typography.xs
 
@@ -647,11 +647,12 @@ PanelWindow {
 
                     color: osd.muted ? Colors.subtext : Colors.text
 
-                    font.family: Typography.firaCode
+                    // Fixed cells, so the readout does not shuffle as it counts.
+                    font.family: Typography.mono
 
                     font.pixelSize: Typography.sm
 
-                    font.bold: true
+                    font.weight: Typography.demiBold
 
                     horizontalAlignment: Text.AlignRight
 

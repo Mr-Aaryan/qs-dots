@@ -205,7 +205,7 @@ Item {
 
                         color: "#ffffff"
 
-                        font.family: Typography.firaCode
+                        font.family: Typography.ui
 
                         font.pixelSize: Typography.xs
 

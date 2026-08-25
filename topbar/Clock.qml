@@ -10,7 +10,7 @@ Text {
 
     color: Colors.text
 
-    font.family: Typography.firaCode
+    font.family: Typography.ui
     font.pixelSize: Typography.lg
 
     function updateTime() {

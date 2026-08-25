@@ -378,7 +378,7 @@ Item {
 
                             color: Colors.text
 
-                            font.family: Typography.firaCode
+                            font.family: Typography.ui
                             font.pixelSize: Typography.lg
                             font.bold: true
 
@@ -490,7 +490,7 @@ Item {
 
                                     selectionColor: Colors.accent
 
-                                    font.family: Typography.firaCode
+                                    font.family: Typography.ui
 
                                     font.pixelSize: Typography.sm
 
@@ -518,7 +518,7 @@ Item {
 
                                     opacity: 0.5
 
-                                    font.family: Typography.firaCode
+                                    font.family: Typography.ui
 
                                     font.pixelSize: Typography.sm
 
@@ -564,7 +564,7 @@ Item {
 
                         color: Colors.subtext
 
-                        font.family: Typography.firaCode
+                        font.family: Typography.ui
 
                         font.pixelSize: Typography.md
 
@@ -638,7 +638,7 @@ Item {
 
                                         color: Colors.subtext
 
-                                        font.family: Typography.firaCode
+                                        font.family: Typography.ui
 
                                         font.pixelSize: Typography.xs
 
@@ -712,7 +712,7 @@ Item {
 
                                     color: Colors.text
 
-                                    font.family: Typography.firaCode
+                                    font.family: Typography.ui
 
                                     font.pixelSize: Typography.sm
 
@@ -741,7 +741,7 @@ Item {
 
                                         color: Colors.text
 
-                                        font.family: Typography.firaCode
+                                        font.family: Typography.ui
 
                                         font.pixelSize: Typography.sm
 
@@ -755,7 +755,7 @@ Item {
 
                                         color: Colors.subtext
 
-                                        font.family: Typography.firaCode
+                                        font.family: Typography.ui
 
                                         font.pixelSize: Typography.xs
 
@@ -800,11 +800,13 @@ Item {
 
                                         color: copyButton.copied ? Colors.base : Colors.text
 
-                                        font.family: Typography.firaCode
+                                        // Carries a Nerd Font glyph either way.
+                                        font.family: Typography.mono
 
                                         font.pixelSize: copyButton.copied ? Typography.xs : 16
 
-                                        font.bold: copyButton.copied
+                                        // The label and the fill already say "copied".
+                                        font.weight: Typography.normal
 
                                         textFormat: Text.PlainText
                                     }

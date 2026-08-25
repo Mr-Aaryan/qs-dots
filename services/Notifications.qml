@@ -115,7 +115,13 @@ Item {
         onTriggered: {
             const now = Date.now();
 
-            const remaining = root.popups.filter(popup => popup.expiresAt === 0 || popup.expiresAt > now);
+            /*
+             * The notification check is not redundant with the clock:
+             * an app can withdraw its own notification at any point,
+             * which destroys the object and leaves this entry holding
+             * a slot in the stack with nothing to draw in it.
+             */
+            const remaining = root.popups.filter(popup => popup.entry.notification && (popup.expiresAt === 0 || popup.expiresAt > now));
 
             if (remaining.length !== root.popups.length)
                 root.popups = remaining;

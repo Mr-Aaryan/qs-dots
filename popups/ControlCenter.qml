@@ -653,11 +653,12 @@ Item {
 
                                         color: toggleTile.active ? Colors.base : Colors.text
 
-                                        font.family: Typography.firaCode
+                                        font.family: Typography.ui
 
                                         font.pixelSize: Typography.xs
 
-                                        font.bold: toggleTile.active
+                                        // Active state is the fill and the inverted text colour.
+                                        font.weight: Typography.normal
 
                                         elide: Text.ElideRight
 
@@ -884,7 +885,7 @@ Item {
 
                                         color: Colors.text
 
-                                        font.family: Typography.firaCode
+                                        font.family: Typography.ui
 
                                         font.pixelSize: Typography.xs
 
@@ -1043,7 +1044,7 @@ Item {
 
                                 color: Colors.text
 
-                                font.family: Typography.firaCode
+                                font.family: Typography.ui
 
                                 font.pixelSize: Typography.md
 
@@ -1057,7 +1058,7 @@ Item {
 
                                 color: Colors.subtext
 
-                                font.family: Typography.firaCode
+                                font.family: Typography.ui
 
                                 font.pixelSize: Typography.xs
 
@@ -1115,7 +1116,7 @@ Item {
 
                             color: Colors.text
 
-                            font.family: Typography.firaCode
+                            font.family: Typography.ui
 
                             font.pixelSize: Typography.md
 
@@ -1154,7 +1155,7 @@ Item {
 
                                     color: presetMouse.containsMouse ? Colors.base : Colors.text
 
-                                    font.family: Typography.firaCode
+                                    font.family: Typography.ui
 
                                     font.pixelSize: Typography.sm
 
@@ -1186,7 +1187,7 @@ Item {
 
                             color: Colors.subtext
 
-                            font.family: Typography.firaCode
+                            font.family: Typography.ui
 
                             font.pixelSize: Typography.xs
 

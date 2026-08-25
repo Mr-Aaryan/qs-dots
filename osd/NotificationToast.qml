@@ -67,11 +67,26 @@ PanelWindow {
 
                 readonly property var popup: Notifications.popups[slot.index] ?? null
 
-                readonly property var notification: slot.popup ? slot.popup.entry.notification : null
+                /*
+                 * Every binding that reads a notification field
+                 * guards on *this* property rather than on `filled`.
+                 *
+                 * The two are not interchangeable. A Notification is
+                 * destroyed the moment it is dismissed or withdrawn
+                 * by the app that sent it, but the popup entry
+                 * pointing at it lives on until its timeout — so
+                 * `popup` stays non-null while `popup.entry.
+                 * notification` has already gone null underneath it.
+                 *
+                 * Guarding a field read with `filled` (which is
+                 * derived from `popup`) therefore let the read
+                 * through onto a dead object.
+                 */
+                readonly property var notification: slot.popup?.entry?.notification ?? null
 
-                readonly property bool filled: slot.popup !== null
+                readonly property bool filled: slot.notification !== null
 
-                readonly property bool critical: slot.filled && slot.notification.urgency === NotificationUrgency.Critical
+                readonly property bool critical: slot.notification?.urgency === NotificationUrgency.Critical
 
                 width: column.width
 
@@ -156,7 +171,7 @@ PanelWindow {
 
                                 anchors.margins: 2
 
-                                source: slot.filled ? Notifications.iconFor(slot.notification) : ""
+                                source: Notifications.iconFor(slot.notification)
 
                                 fillMode: Image.PreserveAspectFit
 
@@ -178,17 +193,25 @@ PanelWindow {
                             Text {
                                 Layout.fillWidth: true
 
-                                visible: slot.filled && slot.notification.appName !== ""
+                                visible: text !== ""
 
-                                text: slot.filled ? slot.notification.appName : ""
+                                text: slot.notification?.appName ?? ""
 
                                 color: slot.critical ? Colors.error : Colors.accent
 
-                                font.family: Typography.firaCode
+                                font.family: Typography.ui
 
                                 font.pixelSize: Typography.xs
 
-                                font.bold: true
+                                font.weight: Typography.demiBold
+
+                                /*
+                                 * A touch of tracking: this is the
+                                 * smallest text on the card and the
+                                 * one most often read as a glance
+                                 * rather than a word.
+                                 */
+                                font.letterSpacing: 0.3
 
                                 elide: Text.ElideRight
 
@@ -200,15 +223,15 @@ PanelWindow {
 
                                 visible: text !== ""
 
-                                text: slot.filled ? slot.notification.summary : ""
+                                text: slot.notification?.summary ?? ""
 
                                 color: Colors.text
 
-                                font.family: Typography.firaCode
+                                font.family: Typography.ui
 
-                                font.pixelSize: Typography.sm
+                                font.pixelSize: Typography.md
 
-                                font.bold: true
+                                font.weight: Typography.demiBold
 
                                 elide: Text.ElideRight
 
@@ -222,13 +245,25 @@ PanelWindow {
 
                                 visible: text !== ""
 
-                                text: slot.filled ? slot.notification.body : ""
+                                text: slot.notification?.body ?? ""
 
-                                color: Colors.subtext
+                                color: Colors.bodyText
 
-                                font.family: Typography.firaCode
+                                font.family: Typography.ui
 
-                                font.pixelSize: Typography.xs
+                                font.pixelSize: Typography.sm
+
+                                font.weight: Typography.normal
+
+                                /*
+                                 * The one place on the card that can
+                                 * run to three wrapped lines, so it
+                                 * is the one place that needs the
+                                 * leading opened up.
+                                 */
+                                lineHeight: 1.25
+
+                                lineHeightMode: Text.ProportionalHeight
 
                                 wrapMode: Text.Wrap
 
@@ -251,15 +286,15 @@ PanelWindow {
                                 spacing: 6
 
                                 Repeater {
-                                    model: slot.filled ? slot.notification.actions : []
+                                    model: slot.notification?.actions ?? []
 
                                     delegate: Rectangle {
                                         id: actionChip
 
                                         required property var modelData
 
-                                        width: actionText.implicitWidth + 18
-                                        height: 22
+                                        width: actionText.implicitWidth + 20
+                                        height: 24
 
                                         radius: 7
 
@@ -280,9 +315,11 @@ PanelWindow {
 
                                             color: actionChipMouse.containsMouse ? Colors.base : Colors.text
 
-                                            font.family: Typography.firaCode
+                                            font.family: Typography.ui
 
                                             font.pixelSize: Typography.xs
+
+                                            font.weight: Typography.medium
 
                                             textFormat: Text.PlainText
                                         }
@@ -334,7 +371,7 @@ PanelWindow {
 
                                 color: closeMouse.containsMouse ? "#ffffff" : Colors.subtext
 
-                                font.family: Typography.firaCode
+                                font.family: Typography.ui
 
                                 font.pixelSize: 15
 
@@ -351,7 +388,13 @@ PanelWindow {
                                 cursorShape: Qt.PointingHandCursor
 
                                 onClicked: {
-                                    Notifications.dismissNotification(slot.popup.entry);
+                                    /*
+                                     * An empty slot is still hit-
+                                     * testable for the length of the
+                                     * collapse animation.
+                                     */
+                                    if (slot.popup)
+                                        Notifications.dismissNotification(slot.popup.entry);
                                 }
                             }
                         }

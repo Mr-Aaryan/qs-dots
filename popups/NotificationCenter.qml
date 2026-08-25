@@ -217,7 +217,7 @@ Item {
 
                             color: Colors.text
 
-                            font.family: Typography.firaCode
+                            font.family: Typography.ui
 
                             font.pixelSize: Typography.lg
 
@@ -302,7 +302,7 @@ Item {
 
                         opacity: 0.6
 
-                        font.family: Typography.firaCode
+                        font.family: Typography.ui
 
                         font.pixelSize: Typography.md
 
@@ -347,7 +347,7 @@ Item {
 
                                 color: Colors.subtext
 
-                                font.family: Typography.firaCode
+                                font.family: Typography.ui
 
                                 font.pixelSize: Typography.sm
 
@@ -410,11 +410,11 @@ Item {
 
                                                     color: Colors.text
 
-                                                    font.family: Typography.firaCode
+                                                    font.family: Typography.ui
 
                                                     font.pixelSize: Typography.sm
 
-                                                    font.bold: true
+                                                    font.weight: Typography.demiBold
 
                                                     elide: Text.ElideRight
 
@@ -428,9 +428,9 @@ Item {
 
                                                     text: notificationCard.modelData.notification.body
 
-                                                    color: Colors.subtext
+                                                    color: Colors.bodyText
 
-                                                    font.family: Typography.firaCode
+                                                    font.family: Typography.ui
 
                                                     font.pixelSize: Typography.xs
 
@@ -473,7 +473,7 @@ Item {
 
                                                     color: dismissMouse.containsMouse ? "#ffffff" : Colors.subtext
 
-                                                    font.family: Typography.firaCode
+                                                    font.family: Typography.ui
 
                                                     font.pixelSize: 16
 

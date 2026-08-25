@@ -132,7 +132,7 @@ Item {
 
                 color: Colors.text
 
-                font.family: Typography.firaCode
+                font.family: Typography.ui
                 font.pixelSize: Typography.md
                 font.bold: true
 
@@ -150,7 +150,7 @@ Item {
 
                 color: Colors.subtext
 
-                font.family: Typography.firaCode
+                font.family: Typography.ui
                 font.pixelSize: Typography.sm
 
                 textFormat: Text.PlainText
@@ -257,7 +257,7 @@ Item {
 
                 color: Colors.accent
 
-                font.family: Typography.firaCode
+                font.family: Typography.ui
                 font.pixelSize: Typography.xs
                 font.bold: true
 
@@ -301,7 +301,7 @@ Item {
 
                     color: Colors.subtext
 
-                    font.family: Typography.firaCode
+                    font.family: Typography.ui
                     font.pixelSize: Typography.xs
                     font.bold: true
 
@@ -401,10 +401,17 @@ Item {
 
                             color: dayCell.today ? Colors.base : Colors.text
 
-                            font.family: Typography.firaCode
+                            font.family: Typography.ui
                             font.pixelSize: Typography.xs
 
-                            font.bold: dayCell.today || dayCell.selected
+                            /*
+                             * Constant weight across the grid. Today
+                             * and the selection are both drawn as a
+                             * filled pill, and a digit that thickens
+                             * inside one is the thing that made the
+                             * row look uneven.
+                             */
+                            font.weight: Typography.normal
 
                             textFormat: Text.PlainText
                         }

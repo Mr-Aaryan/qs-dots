@@ -1,10 +1,10 @@
 {
-    "base": "#1c2024",
-    "surface": "#323539",
-    "subtext": "#8c9199",
-    "text": "#e0e2e8",
-    "accent": "#9ccbfb",
+    "base": "#1e2019",
+    "surface": "#33362e",
+    "subtext": "#8f9285",
+    "text": "#e3e3d8",
+    "accent": "#b4d087",
     "error": "#ffb4ab",
-    "defaultClr": "#272a2f",
-    "gray": "#42474e"
+    "defaultClr": "#292b23",
+    "gray": "#45483d"
 }

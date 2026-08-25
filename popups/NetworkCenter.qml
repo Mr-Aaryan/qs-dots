@@ -666,7 +666,7 @@ Item {
 
                             color: Colors.text
 
-                            font.family: Typography.firaCode
+                            font.family: Typography.ui
 
                             font.pixelSize: Typography.lg
 
@@ -755,7 +755,7 @@ Item {
 
                                 color: Colors.text
 
-                                font.family: Typography.firaCode
+                                font.family: Typography.ui
 
                                 font.pixelSize: Typography.sm
 
@@ -819,7 +819,7 @@ Item {
 
                         color: Colors.subtext
 
-                        font.family: Typography.firaCode
+                        font.family: Typography.ui
 
                         font.pixelSize: Typography.xs
 
@@ -869,7 +869,7 @@ Item {
 
                                     color: Colors.text
 
-                                    font.family: Typography.firaCode
+                                    font.family: Typography.ui
 
                                     font.pixelSize: Typography.sm
 
@@ -887,7 +887,7 @@ Item {
 
                                     color: Colors.subtext
 
-                                    font.family: Typography.firaCode
+                                    font.family: Typography.ui
 
                                     font.pixelSize: Typography.xs
 
@@ -942,7 +942,7 @@ Item {
 
                         color: Colors.subtext
 
-                        font.family: Typography.firaCode
+                        font.family: Typography.ui
 
                         font.pixelSize: Typography.xs
 
@@ -1014,7 +1014,7 @@ Item {
 
                                         color: Colors.text
 
-                                        font.family: Typography.firaCode
+                                        font.family: Typography.ui
 
                                         font.pixelSize: Typography.sm
 
@@ -1030,7 +1030,7 @@ Item {
 
                                         color: Colors.subtext
 
-                                        font.family: Typography.firaCode
+                                        font.family: Typography.ui
 
                                         font.pixelSize: Typography.xs
 
@@ -1102,7 +1102,7 @@ Item {
 
                         verticalAlignment: Text.AlignVCenter
 
-                        font.family: Typography.firaCode
+                        font.family: Typography.ui
 
                         font.pixelSize: Typography.sm
 
@@ -1130,7 +1130,7 @@ Item {
 
                         verticalAlignment: Text.AlignVCenter
 
-                        font.family: Typography.firaCode
+                        font.family: Typography.ui
 
                         font.pixelSize: Typography.sm
 
@@ -1199,7 +1199,7 @@ Item {
 
                             color: Colors.text
 
-                            font.family: Typography.firaCode
+                            font.family: Typography.ui
 
                             font.pixelSize: Typography.lg
 
@@ -1245,7 +1245,7 @@ Item {
 
                             color: Colors.text
 
-                            font.family: Typography.firaCode
+                            font.family: Typography.ui
 
                             font.pixelSize: Typography.md
 
@@ -1265,7 +1265,7 @@ Item {
 
                             color: Colors.subtext
 
-                            font.family: Typography.firaCode
+                            font.family: Typography.ui
 
                             font.pixelSize: Typography.xs
 
@@ -1292,7 +1292,7 @@ Item {
 
                             color: Colors.subtext
 
-                            font.family: Typography.firaCode
+                            font.family: Typography.ui
 
                             font.pixelSize: Typography.xs
 
@@ -1329,7 +1329,7 @@ Item {
 
                                     selectionColor: Colors.accent
 
-                                    font.family: Typography.firaCode
+                                    font.family: Typography.ui
 
                                     font.pixelSize: Typography.sm
 
@@ -1397,7 +1397,7 @@ Item {
 
                         color: Colors.subtext
 
-                        font.family: Typography.firaCode
+                        font.family: Typography.ui
 
                         font.pixelSize: Typography.xs
 
@@ -1419,7 +1419,7 @@ Item {
 
                         color: "#ef4444"
 
-                        font.family: Typography.firaCode
+                        font.family: Typography.ui
 
                         font.pixelSize: Typography.xs
 
@@ -1462,7 +1462,7 @@ Item {
 
                             color: Colors.base
 
-                            font.family: Typography.firaCode
+                            font.family: Typography.ui
 
                             font.pixelSize: Typography.sm
 
@@ -1520,7 +1520,7 @@ Item {
 
                             color: forgetMouse.containsMouse ? "#ef4444" : Colors.subtext
 
-                            font.family: Typography.firaCode
+                            font.family: Typography.ui
 
                             font.pixelSize: Typography.xs
 
