@@ -29,41 +29,53 @@ PanelWindow {
         Region {
             item: bar
         }
+
+        /*
+         * The popups overlap each other, so a closed popup must contribute
+         * an EMPTY region, never a Subtract — a Subtract would cut the
+         * rectangle of whichever popup is currently open back out of the
+         * input region, making its clicks fall through to the window below
+         * and clearing the focus grab.
+         */
+
         Region {
             x: notificationCenter.x
             y: notificationCenter.y
 
-            width: notificationCenter.width
-            height: notificationCenter.height
+            width: notificationCenter.opened ? notificationCenter.width : 0
+            height: notificationCenter.opened ? notificationCenter.height : 0
 
-            intersection: notificationCenter.opened ? Intersection.Combine : Intersection.Subtract
+            intersection: Intersection.Combine
         }
+
         Region {
             x: clipboardCenter.x
             y: clipboardCenter.y
 
-            width: clipboardCenter.width
-            height: clipboardCenter.height
+            width: clipboardCenter.opened ? clipboardCenter.width : 0
+            height: clipboardCenter.opened ? clipboardCenter.height : 0
 
-            intersection: clipboardCenter.opened ? Intersection.Combine : Intersection.Subtract
+            intersection: Intersection.Combine
         }
+
         Region {
             x: networkCenter.x
             y: networkCenter.y
 
-            width: networkCenter.width
-            height: networkCenter.height
+            width: networkCenter.opened ? networkCenter.width : 0
+            height: networkCenter.opened ? networkCenter.height : 0
 
-            intersection: networkCenter.opened ? Intersection.Combine : Intersection.Subtract
+            intersection: Intersection.Combine
         }
+
         Region {
             x: dashboardCenter.x
             y: dashboardCenter.y
 
-            width: dashboardCenter.width
-            height: dashboardCenter.height
+            width: dashboardCenter.opened ? dashboardCenter.width : 0
+            height: dashboardCenter.opened ? dashboardCenter.height : 0
 
-            intersection: dashboardCenter.opened ? Intersection.Combine : Intersection.Subtract
+            intersection: Intersection.Combine
         }
     }
 

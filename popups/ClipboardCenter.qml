@@ -19,6 +19,14 @@ Item {
     property string searchText: ""
     property var clipboardItems: []
 
+    /*
+     * Id of the entry currently being copied, and the id of the
+     * entry that was just copied successfully. The latter drives
+     * the "Copied" badge in the list.
+     */
+    property string pendingCopyId: ""
+    property string copiedId: ""
+
     width: panelWidth
     height: panelHeight
 
@@ -190,14 +198,40 @@ Item {
 
         running: false
 
-        onRunningChanged: if (!running) {
+        onExited: function (exitCode) {
+            if (exitCode === 0) {
+                /*
+                 * Show the "Copied" badge for a moment before the
+                 * popup disappears, otherwise a successful copy is
+                 * indistinguishable from the popup simply closing.
+                 */
+                clipboardCenter.copiedId = clipboardCenter.pendingCopyId;
+
+                copyFeedbackTimer.restart();
+            } else {
+                console.log("Clipboard copy failed, exit code:", exitCode);
+
+                clipboardCenter.pendingCopyId = "";
+            }
+        }
+    }
+
+    Timer {
+        id: copyFeedbackTimer
+
+        interval: 550
+        repeat: false
+
+        onTriggered: {
             clipboardCenter.close();
         }
     }
 
     function copyItem(item) {
-        if (copyProcess.running)
+        if (copyProcess.running || clipboardCenter.copiedId !== "")
             return;
+        clipboardCenter.pendingCopyId = item.id;
+
         copyProcess.command = ["sh", "-c", "printf '%s\\n' \"$1\" | cliphist decode | wl-copy", "clipboard-copy", item.rawLine];
 
         copyProcess.running = true;
@@ -253,6 +287,11 @@ Item {
         searchInput.text = "";
 
         searchInput.focus = false;
+
+        copyFeedbackTimer.stop();
+
+        copiedId = "";
+        pendingCopyId = "";
     }
 
     function toggle() {
@@ -725,20 +764,26 @@ Item {
                                 }
 
                                 // =====================================
-                                // COPY BUTTON
+                                // COPY BUTTON / COPIED BADGE
+                                //
+                                // The whole row is the click target, so
+                                // this is a pure affordance — it carries
+                                // no MouseArea of its own.
                                 // =====================================
 
                                 Rectangle {
                                     id: copyButton
 
-                                    visible: clipboardMouse.containsMouse
+                                    readonly property bool copied: clipboardCenter.copiedId === clipboardDelegate.modelData.id
 
-                                    Layout.preferredWidth: 30
+                                    visible: clipboardMouse.containsMouse || copyButton.copied
+
+                                    Layout.preferredWidth: copyButton.copied ? copyLabel.implicitWidth + 16 : 30
                                     Layout.preferredHeight: 30
 
                                     radius: 7
 
-                                    color: copyButtonMouse.containsMouse ? Colors.surface : "transparent"
+                                    color: copyButton.copied ? Colors.accent : Colors.surface
 
                                     Behavior on color {
                                         ColorAnimation {
@@ -747,41 +792,32 @@ Item {
                                     }
 
                                     Text {
+                                        id: copyLabel
+
                                         anchors.centerIn: parent
 
-                                        text: "󰆏"
+                                        text: copyButton.copied ? "󰄬 Copied" : "󰆏"
 
-                                        color: copyButtonMouse.containsMouse ? Colors.text : Colors.subtext
+                                        color: copyButton.copied ? Colors.base : Colors.text
 
-                                        font.pixelSize: 16
+                                        font.family: Typography.firaCode
+
+                                        font.pixelSize: copyButton.copied ? Typography.xs : 16
+
+                                        font.bold: copyButton.copied
 
                                         textFormat: Text.PlainText
-
-                                        Behavior on color {
-                                            ColorAnimation {
-                                                duration: 120
-                                            }
-                                        }
-                                    }
-
-                                    MouseArea {
-                                        id: copyButtonMouse
-
-                                        anchors.fill: parent
-
-                                        hoverEnabled: true
-
-                                        cursorShape: Qt.PointingHandCursor
-
-                                        onClicked: {
-                                            clipboardCenter.copyItem(clipboardDelegate.modelData);
-                                        }
                                     }
                                 }
                             }
 
                             // =============================================
-                            // ROW HOVER
+                            // ROW HOVER + COPY
+                            //
+                            // This sits on top of the whole row and owns
+                            // both hover and clicks, so clicking anywhere
+                            // in the row — including the copy button —
+                            // copies the entry.
                             // =============================================
 
                             MouseArea {
@@ -792,6 +828,10 @@ Item {
                                 hoverEnabled: true
 
                                 cursorShape: Qt.PointingHandCursor
+
+                                onClicked: {
+                                    clipboardCenter.copyItem(clipboardDelegate.modelData);
+                                }
                             }
                         }
                     }
