@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Io
 import Quickshell.Services.Pipewire
 import Quickshell.Services.UPower
 
@@ -17,10 +16,12 @@ PanelWindow {
     // ============================================================
 
     /*
-     * Backlight device under /sys/class/backlight.
+     * Backlight device under /sys/class/backlight, and keyboard
+     * backlight under /sys/class/leds.
      * See `brightnessctl -l` for the available devices.
      */
     property string backlightDevice: "intel_backlight"
+    property string keyboardDevice: "asus::kbd_backlight"
 
     property int hideDelay: 1600
 
@@ -177,50 +178,47 @@ PanelWindow {
     }
 
     // ============================================================
-    // BRIGHTNESS
-    //
-    // The backlight sysfs file notifies on change, so the OSD
-    // reacts no matter what changed it — keybind, GUI or the
-    // kernel itself. No polling involved.
+    // SCREEN BRIGHTNESS
     // ============================================================
 
-    property int maxBrightness: 1
+    BacklightSource {
+        path: "/sys/class/backlight/" + osd.backlightDevice
 
-    FileView {
-        id: maxBrightnessFile
-
-        path: "/sys/class/backlight/" + osd.backlightDevice + "/max_brightness"
-
-        onLoaded: {
-            const parsed = Number(maxBrightnessFile.text().trim());
-
-            if (parsed > 0)
-                osd.maxBrightness = parsed;
+        onUpdated: function (fraction) {
+            osd.showBrightness(fraction);
         }
     }
 
-    FileView {
-        id: brightnessFile
-
-        path: "/sys/class/backlight/" + osd.backlightDevice + "/brightness"
-
-        watchChanges: true
-
-        onFileChanged: {
-            brightnessFile.reload();
-        }
-
-        onLoaded: {
-            osd.showBrightness(Number(brightnessFile.text().trim()));
-        }
-    }
-
-    function showBrightness(raw) {
-        if (isNaN(raw))
-            return;
+    function showBrightness(fraction) {
         osd.kind = "brightness";
         osd.label = "";
-        osd.value = raw / osd.maxBrightness;
+        osd.value = fraction;
+        osd.muted = false;
+
+        osd.reveal();
+    }
+
+    // ============================================================
+    // KEYBOARD BACKLIGHT
+    // ============================================================
+
+    BacklightSource {
+        path: "/sys/class/leds/" + osd.keyboardDevice
+
+        onUpdated: function (fraction) {
+            osd.showKeyboard(fraction);
+        }
+    }
+
+    function showKeyboard(fraction) {
+        osd.kind = "keyboard";
+
+        /*
+         * Labelled because a keyboard backlight step reads as an
+         * ordinary brightness change otherwise.
+         */
+        osd.label = "Keyboard";
+        osd.value = fraction;
         osd.muted = false;
 
         osd.reveal();
@@ -437,6 +435,9 @@ PanelWindow {
             return osd.batterySteps[Math.max(0, Math.min(10, Math.round(osd.batteryLevel / 10)))];
         }
 
+        if (osd.kind === "keyboard")
+            return osd.value > 0 ? "󰌌" : "󰌐";
+
         if (osd.kind === "brightness") {
             if (osd.value >= 0.66)
                 return "󰃠";
@@ -476,6 +477,13 @@ PanelWindow {
 
             return Colors.accent;
         }
+
+        /*
+         * A keyboard backlight that is off should read as off
+         * rather than as an accent-coloured empty bar.
+         */
+        if (osd.kind === "keyboard" && osd.value <= 0)
+            return Colors.subtext;
 
         if (osd.muted)
             return Colors.subtext;
