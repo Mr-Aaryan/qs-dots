@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import Quickshell.Services.SystemTray
 import Quickshell.Widgets
 import "../theme"
@@ -46,6 +47,29 @@ Rectangle {
                     source: trayItem.modelData.icon
                 }
 
+                /*
+                 * The item's own context menu, served over DBusMenu by
+                 * the application.
+                 *
+                 * This used to call modelData.display(trayItem, ...),
+                 * which silently did nothing: that method's first
+                 * argument is a *window*, and a Rectangle is not one.
+                 * QsMenuAnchor takes the item directly and is the
+                 * supported way to place one of these.
+                 */
+                QsMenuAnchor {
+                    id: trayMenu
+
+                    menu: trayItem.modelData.menu
+
+                    anchor.item: trayItem
+
+                    // Hang it off the bottom edge, aligned to the icon.
+                    anchor.edges: Edges.Bottom
+
+                    anchor.gravity: Edges.Bottom
+                }
+
                 MouseArea {
                     anchors.fill: parent
 
@@ -57,9 +81,21 @@ Rectangle {
                     onClicked: function (mouse) {
                         if (mouse.button === Qt.LeftButton) {
                             trayItem.modelData.activate();
-                        } else if (mouse.button === Qt.RightButton && trayItem.modelData.hasMenu) {
-                            trayItem.modelData.display(trayItem, 0, trayItem.height);
+
+                            return;
                         }
+
+                        if (!trayItem.modelData.hasMenu)
+                            return;
+
+                        /*
+                         * Right-clicking the same icon again dismisses
+                         * a menu that is already up.
+                         */
+                        if (trayMenu.visible)
+                            trayMenu.close();
+                        else
+                            trayMenu.open();
                     }
                 }
             }
