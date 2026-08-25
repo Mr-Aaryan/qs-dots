@@ -180,7 +180,27 @@ PanelWindow {
 
                                 asynchronous: true
 
+                                /*
+                                 * Both axes, not just the width.
+                                 *
+                                 * The source here is usually a themed
+                                 * SVG, and a half-specified sourceSize
+                                 * asks Qt's SVG renderer for a 72x0
+                                 * target. Any icon drawn with a mask,
+                                 * filter or clip path needs an
+                                 * offscreen buffer, and sizing it
+                                 * against that zero height overflows
+                                 * into a buffer Qt then refuses:
+                                 *
+                                 *   qt.svg.draw: The requested buffer
+                                 *   size is too big, ignoring
+                                 *
+                                 * With PreserveAspectFit this is a
+                                 * bounding box, so square icons render
+                                 * exactly as before.
+                                 */
                                 sourceSize.width: 72
+                                sourceSize.height: 72
                             }
                         }
 
