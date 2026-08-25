@@ -29,7 +29,7 @@ Item {
     signal sectionRequested(string section)
 
     readonly property int panelWidth: 340
-    readonly property int panelHeight: 450
+    readonly property int panelHeight: 370
 
     width: panelWidth
     height: panelHeight
@@ -489,17 +489,7 @@ Item {
             key: "colorpicker",
             label: "Pick colour",
             icon: "󰈋"
-        },
-        {
-            key: "wallpaper",
-            label: "Wallpaper",
-            icon: "󰸉"
-        },
-        {
-            key: "placeholder",
-            label: "",
-            icon: "󰇘"
-        },
+        }
     ]
 
     Process {
