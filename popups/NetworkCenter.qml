@@ -621,25 +621,151 @@ Item {
     }
 
     /*
+     * Set while a pair or connect is in flight. Discovery is held off
+     * for the duration -- see btDiscoveryWanted.
+     */
+    property bool btBusy: false
+
+    /*
+     * The device most recently asked to pair, so the follow-up work
+     * can run once BlueZ reports it bonded.
+     */
+    property var btPendingDevice: null
+
+    /*
      * A tap on a device row means the obvious thing for whatever
      * state it is in.
      */
     function pressDevice(device) {
         if (!device)
             return;
+
+        /*
+         * A second tap while pairing is in flight means stop, not
+         * pair again. BlueZ rejects the duplicate request, and the
+         * row would otherwise sit on "Pairing…" until it timed out.
+         */
+        if (device.pairing) {
+            device.cancelPair();
+
+            networkCenter.clearBtBusy();
+
+            return;
+        }
+
         if (device.connected) {
             device.disconnect();
 
             return;
         }
 
+        /*
+         * A scan and a connection attempt compete for the same radio.
+         * BlueZ will often take many seconds or fail outright while
+         * discovery is running, so it is stopped for the attempt and
+         * resumes on its own once btBusy clears.
+         */
+        networkCenter.btBusy = true;
+
+        btBusyTimeout.restart();
+
         if (device.paired || device.bonded) {
-            device.connect();
+            networkCenter.connectDevice(device);
 
             return;
         }
 
+        networkCenter.btPendingDevice = device;
+
         device.pair();
+    }
+
+    /*
+     * Pairing on its own does not connect, and an untrusted device
+     * will not come back by itself after it next drops. Both of those
+     * are what "it paired but nothing happened" actually is.
+     */
+    function connectDevice(device) {
+        if (!device)
+            return;
+
+        if (!device.trusted)
+            device.trusted = true;
+
+        if (!device.connected)
+            device.connect();
+    }
+
+    function clearBtBusy() {
+        networkCenter.btBusy = false;
+        networkCenter.btPendingDevice = null;
+
+        btBusyTimeout.stop();
+    }
+
+    /*
+     * Pairing that is never answered -- the other device out of
+     * range, or a confirmation nobody accepted -- leaves no signal to
+     * react to. Without this, discovery would stay off for as long as
+     * the panel stayed open.
+     */
+    Timer {
+        id: btBusyTimeout
+
+        interval: 30000
+        repeat: false
+
+        onTriggered: {
+            networkCenter.clearBtBusy();
+        }
+    }
+
+    Connections {
+        target: networkCenter.btPendingDevice
+
+        ignoreUnknownSignals: true
+
+        function onPairingChanged() {
+            networkCenter.finishPairing();
+        }
+
+        function onPairedChanged() {
+            networkCenter.finishPairing();
+        }
+
+        function onBondedChanged() {
+            networkCenter.finishPairing();
+        }
+    }
+
+    function finishPairing() {
+        const device = networkCenter.btPendingDevice;
+
+        if (!device)
+            return;
+
+        // Still in flight.
+        if (device.pairing)
+            return;
+
+        /*
+         * Pairing ended without a bond -- rejected, or out of range.
+         * Release the radio and leave the row showing "Tap to pair"
+         * so it can be tried again.
+         */
+        if (!device.paired && !device.bonded) {
+            networkCenter.clearBtBusy();
+
+            return;
+        }
+
+        networkCenter.btPendingDevice = null;
+
+        networkCenter.connectDevice(device);
+
+        networkCenter.btBusy = false;
+
+        btBusyTimeout.stop();
     }
 
     /*
@@ -733,10 +859,23 @@ Item {
      * section is actually on screen, and stopped again on the way
      * out so it does not sit burning the radio.
      */
-    readonly property bool btDiscoveryWanted: networkCenter.opened && networkCenter.section === "bluetooth" && networkCenter.btEnabled && !networkCenter.detailView
+    readonly property bool btDiscoveryWanted: networkCenter.opened && networkCenter.section === "bluetooth" && networkCenter.btEnabled && !networkCenter.detailView && !networkCenter.btBusy
 
     onBtDiscoveryWantedChanged: {
         networkCenter.setBtDiscovery(networkCenter.btDiscoveryWanted);
+    }
+
+    /*
+     * BlueZ leaves the adapter non-pairable by default, which blocks
+     * a device that answers a pair request by starting its own. Held
+     * on only while the bluetooth section is up, for the same reason
+     * discovery is.
+     */
+    readonly property bool btPairableWanted: networkCenter.opened && networkCenter.section === "bluetooth" && networkCenter.btEnabled
+
+    onBtPairableWantedChanged: {
+        if (networkCenter.btAvailable)
+            networkCenter.btAdapter.pairable = networkCenter.btPairableWanted;
     }
 
     // ============================================================

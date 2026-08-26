@@ -13,18 +13,39 @@ Item {
     // ACTIVE PLAYER
     // ============================================================
 
-    property var activePlayer: {
+    /*
+     * Cleared while the panel this lives in is shut or showing a
+     * different tab, so nothing is polled for a widget nobody can
+     * see. Defaults true so the component still works on its own.
+     */
+    property bool active: true
+
+    readonly property var activePlayer: {
         const players = Mpris.players.values;
 
         if (players.length === 0)
             return null;
 
-        const playing = players.find(p => p.isPlaying);
+        /*
+         * isPlaying is read for every player rather than stopping at
+         * the first match. Array.find short circuits, and a binding
+         * only depends on what it actually read -- so once a playing
+         * player was found, starting or pausing any player after it
+         * in the list would not re-run this.
+         */
+        let playing = null;
 
-        return playing || players[0];
+        for (let i = 0; i < players.length; i++) {
+            if (players[i].isPlaying && playing === null)
+                playing = players[i];
+        }
+
+        return playing ?? players[0];
     }
 
-    property bool hasPlayer: activePlayer !== null
+    readonly property bool hasPlayer: root.activePlayer !== null
+
+    readonly property bool playing: root.hasPlayer && root.activePlayer.isPlaying
 
     // ============================================================
     // TRACK STATE
@@ -32,13 +53,25 @@ Item {
 
     property real displayPosition: 0
 
-    // IMPORTANT:
-    // This is the duration shown by our UI.
-    // We intentionally do NOT continuously trust MPRIS length.
+    /*
+     * Duration of the current track, or 0 while it is not known yet.
+     *
+     * Sticky against zero deliberately: players do report a length of
+     * 0 for a moment mid-track, and this used to be frozen at
+     * whatever arrived on the track change to avoid that. The catch
+     * is that most players emit the track change *before* the new
+     * metadata, so the frozen value was the previous track's length
+     * and stayed wrong for the whole song. Clearing on a real track
+     * change and ignoring only the zeroes gets both cases right.
+     */
     property real trackLength: 0
 
-    // Used to detect an actual track change.
-    property string trackId: ""
+    readonly property bool positionKnown: root.hasPlayer && root.activePlayer.positionSupported
+
+    readonly property bool lengthKnown: root.hasPlayer && root.activePlayer.lengthSupported
+
+    // A seek needs a scale to seek against, not just permission.
+    readonly property bool seekable: root.hasPlayer && root.activePlayer.canSeek && root.positionKnown && root.trackLength > 0
 
     // ============================================================
     // HELPERS
@@ -54,83 +87,58 @@ Item {
         return mins + ":" + (secs < 10 ? "0" : "") + secs;
     }
 
-    function currentTrackId() {
-        if (!root.activePlayer)
-            return "";
-
-        return String(root.activePlayer.trackTitle || "") + "|" + String(root.activePlayer.trackArtist || "") + "|" + String(root.activePlayer.trackAlbum || "");
-    }
-
-    function updateTrackState() {
-        if (!root.activePlayer)
+    function syncLength() {
+        if (!root.lengthKnown)
             return;
 
-        const newId = root.currentTrackId();
+        const length = Number(root.activePlayer.length);
 
-        // --------------------------------------------------------
-        // New track
-        // --------------------------------------------------------
-
-        if (newId !== root.trackId) {
-            root.trackId = newId;
-
-            const newLength = Number(root.activePlayer.length);
-
-            if (isFinite(newLength) && newLength > 0)
-                root.trackLength = newLength;
-
-            const newPosition = Number(root.activePlayer.position);
-
-            if (isFinite(newPosition) && newPosition >= 0)
-                root.displayPosition = newPosition;
-
-            return;
-        }
-
-        // --------------------------------------------------------
-        // Same track
-        //
-        // DO NOT update trackLength here.
-        //
-        // Some MPRIS players, especially browser/media players,
-        // can temporarily report a different length after seeking.
-        // --------------------------------------------------------
-
-        if (!progressMouseArea.pressed) {
-            const position = Number(root.activePlayer.position);
-
-            if (isFinite(position) && position >= 0)
-                root.displayPosition = position;
-        }
+        if (isFinite(length) && length > 0)
+            root.trackLength = length;
     }
 
-    // ============================================================
-    // INITIAL PLAYER
-    // ============================================================
+    function syncPosition() {
+        if (!root.positionKnown || progressMouseArea.pressed)
+            return;
+
+        const position = Number(root.activePlayer.position);
+
+        if (isFinite(position) && position >= 0)
+            root.displayPosition = position;
+    }
+
+    /*
+     * The player moved to a different track. The old duration has to
+     * go with it -- carrying it over is what made the total time read
+     * wrong until the song after next.
+     */
+    function resetTrack() {
+        root.trackLength = 0;
+        root.displayPosition = 0;
+
+        root.syncLength();
+        root.syncPosition();
+    }
 
     onActivePlayerChanged: {
-        root.trackId = "";
-
-        if (!root.activePlayer) {
-            root.trackLength = 0;
-            root.displayPosition = 0;
-            return;
-        }
-
-        root.updateTrackState();
+        root.resetTrack();
     }
 
     // ============================================================
     // POSITION SYNC
+    //
+    // Only while something is actually playing and on screen. A
+    // paused player's position does not move, and a closed panel has
+    // nobody to show it to.
     // ============================================================
 
     Timer {
         interval: 100
-        running: root.activePlayer !== null
+        running: root.active && root.playing && root.positionKnown
         repeat: true
 
         onTriggered: {
-            root.updateTrackState();
+            root.syncPosition();
         }
     }
 
@@ -142,20 +150,27 @@ Item {
         target: root.activePlayer
 
         function onPositionChanged() {
-            if (!progressMouseArea.pressed) {
-                const position = Number(root.activePlayer.position);
-
-                if (isFinite(position) && position >= 0)
-                    root.displayPosition = position;
-            }
+            root.syncPosition();
         }
 
-        function onTrackChanged() {
-            root.trackId = "";
+        /*
+         * Length arrives on its own signal, usually a beat after the
+         * track change. Without this the duration was only ever read
+         * at the instant it was least likely to be there.
+         */
+        function onLengthChanged() {
+            root.syncLength();
+        }
 
-            Qt.callLater(function () {
-                root.updateTrackState();
-            });
+        /*
+         * The player's own track-change signal, which fires once per
+         * track. The old code derived an identity from title, artist
+         * and album instead -- fields a player fills in one at a
+         * time, so a single track looked like three track changes and
+         * reset the position on each.
+         */
+        function onTrackChanged() {
+            root.resetTrack();
         }
     }
 
@@ -454,7 +469,13 @@ Item {
 
                 hoverEnabled: true
 
-                enabled: root.activePlayer && root.activePlayer.canSeek && root.trackLength > 0
+                /*
+                 * Also requires the player to report a position at
+                 * all -- canSeek alone is not enough to place the
+                 * handle, and dragging a bar that cannot move is
+                 * worse than not offering the drag.
+                 */
+                enabled: root.seekable
 
                 cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
 
@@ -506,8 +527,13 @@ Item {
                     root.activePlayer.position = finalPosition;
                 }
 
+                /*
+                 * Drag aborted rather than released -- no seek was
+                 * issued, so put the handle back where the player
+                 * actually is.
+                 */
                 onCanceled: {
-                    root.updateTrackState();
+                    root.syncPosition();
                 }
             }
         }

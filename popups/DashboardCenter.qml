@@ -1166,6 +1166,16 @@ df -B1 --output=target,size,used / "$HOME" 2>/dev/null | awk 'NR>1 && !seen[$1]+
                                 anchors.fill: parent
 
                                 anchors.margins: 4
+
+                                /*
+                                 * Stops the position poll while the
+                                 * dashboard is shut or on another
+                                 * tab. The panel keeps its QML
+                                 * visibility either way, so the
+                                 * player cannot work this out on its
+                                 * own.
+                                 */
+                                active: dashboardCenter.opened && dashboardCenter.tab === 0
                             }
                         }
                     }
