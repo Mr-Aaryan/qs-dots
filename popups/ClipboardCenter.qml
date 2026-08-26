@@ -12,7 +12,6 @@ Item {
     id: clipboardCenter
 
     property bool opened: false
-
     readonly property int panelWidth: 320
     readonly property int panelHeight: 420
 
@@ -60,10 +59,12 @@ Item {
 
             if (line.trim() === "")
                 continue;
+
             const separator = line.indexOf("\t");
 
             if (separator === -1)
                 continue;
+
             const id = line.substring(0, separator);
             const text = line.substring(separator + 1);
 
@@ -101,6 +102,13 @@ Item {
         clipboardItems = items;
 
         prepareImages();
+
+        Qt.callLater(function () {
+            if (clipboardList.count > 0)
+                clipboardList.currentIndex = 0;
+            else
+                clipboardList.currentIndex = -1;
+        });
     }
 
     // ============================================================
@@ -113,6 +121,7 @@ Item {
 
             if (!item.isImage)
                 continue;
+
             decodeImage(item);
         }
     }
@@ -189,6 +198,20 @@ Item {
         });
     }
 
+    /*
+     * Whenever the search results change, reset keyboard selection
+     * to the first result.
+     */
+    onSearchTextChanged: {
+        Qt.callLater(function () {
+            if (clipboardList.count > 0) {
+                clipboardList.currentIndex = 0;
+            } else {
+                clipboardList.currentIndex = -1;
+            }
+        });
+    }
+
     // ============================================================
     // COPY SELECTED ITEM
     // ============================================================
@@ -228,8 +251,12 @@ Item {
     }
 
     function copyItem(item) {
+        if (!item)
+            return;
+
         if (copyProcess.running || clipboardCenter.copiedId !== "")
             return;
+
         clipboardCenter.pendingCopyId = item.id;
 
         copyProcess.command = ["sh", "-c", "printf '%s\\n' \"$1\" | cliphist decode | wl-copy", "clipboard-copy", item.rawLine];
@@ -250,6 +277,7 @@ Item {
             clipboardCenter.clipboardItems = [];
             clipboardCenter.searchText = "";
             searchInput.text = "";
+            clipboardList.currentIndex = -1;
 
             /*
              * Refresh after wiping so the UI reflects the
@@ -261,7 +289,6 @@ Item {
 
     function wipeClipboard() {
         wipeProcess.command = ["cliphist", "wipe"];
-
         wipeProcess.running = true;
     }
 
@@ -272,6 +299,8 @@ Item {
     function open() {
         searchText = "";
         searchInput.text = "";
+
+        clipboardList.currentIndex = -1;
 
         refresh();
 
@@ -287,6 +316,9 @@ Item {
         searchInput.text = "";
 
         searchInput.focus = false;
+        clipboardList.focus = false;
+
+        clipboardList.currentIndex = -1;
 
         copyFeedbackTimer.stop();
 
@@ -456,7 +488,6 @@ Item {
                         color: Colors.surface
 
                         border.width: searchInput.activeFocus ? 1 : 0
-
                         border.color: Colors.accent
 
                         RowLayout {
@@ -487,11 +518,9 @@ Item {
                                     anchors.fill: parent
 
                                     color: Colors.text
-
                                     selectionColor: Colors.accent
 
                                     font.family: Typography.ui
-
                                     font.pixelSize: Typography.sm
 
                                     clip: true
@@ -500,6 +529,18 @@ Item {
 
                                     onTextChanged: {
                                         clipboardCenter.searchText = text;
+                                    }
+
+                                    /*
+                                     * Down from the search field moves
+                                     * keyboard focus into the clipboard list.
+                                     */
+                                    Keys.onDownPressed: {
+                                        if (clipboardList.count > 0) {
+                                            clipboardList.currentIndex = 0;
+                                            clipboardList.forceActiveFocus();
+                                            clipboardList.positionViewAtIndex(clipboardList.currentIndex, ListView.Contain);
+                                        }
                                     }
 
                                     Keys.onEscapePressed: {
@@ -515,11 +556,9 @@ Item {
                                     text: "Search clipboard..."
 
                                     color: Colors.subtext
-
                                     opacity: 0.5
 
                                     font.family: Typography.ui
-
                                     font.pixelSize: Typography.sm
 
                                     verticalAlignment: Text.AlignVCenter
@@ -557,7 +596,6 @@ Item {
                         Layout.fillHeight: true
 
                         horizontalAlignment: Text.AlignHCenter
-
                         verticalAlignment: Text.AlignVCenter
 
                         text: clipboardCenter.clipboardItems.length === 0 ? "No clipboard history" : "No results"
@@ -565,7 +603,6 @@ Item {
                         color: Colors.subtext
 
                         font.family: Typography.ui
-
                         font.pixelSize: Typography.md
 
                         opacity: 0.6
@@ -591,6 +628,64 @@ Item {
 
                         model: clipboardCenter.filteredItems
 
+                        /*
+                         * Allow the ListView itself to receive keyboard
+                         * focus.
+                         */
+                        focus: clipboardCenter.opened
+
+                        /*
+                         * Start at the first result.
+                         */
+                        currentIndex: clipboardList.count > 0 ? 0 : -1
+
+                        /*
+                         * UP
+                         */
+                        Keys.onUpPressed: {
+                            if (currentIndex > 0) {
+                                currentIndex--;
+
+                                positionViewAtIndex(currentIndex, ListView.Contain);
+                            }
+                        }
+
+                        /*
+                         * DOWN
+                         */
+                        Keys.onDownPressed: {
+                            if (currentIndex < count - 1) {
+                                currentIndex++;
+
+                                positionViewAtIndex(currentIndex, ListView.Contain);
+                            }
+                        }
+
+                        /*
+                         * ENTER
+                         */
+                        Keys.onReturnPressed: {
+                            if (currentIndex >= 0 && currentIndex < count) {
+                                clipboardCenter.copyItem(clipboardCenter.filteredItems[currentIndex]);
+                            }
+                        }
+
+                        /*
+                         * Numpad Enter / alternate Enter event.
+                         */
+                        Keys.onEnterPressed: {
+                            if (currentIndex >= 0 && currentIndex < count) {
+                                clipboardCenter.copyItem(clipboardCenter.filteredItems[currentIndex]);
+                            }
+                        }
+
+                        /*
+                         * ESCAPE
+                         */
+                        Keys.onEscapePressed: {
+                            clipboardCenter.close();
+                        }
+
                         delegate: Rectangle {
                             id: clipboardDelegate
 
@@ -603,7 +698,11 @@ Item {
 
                             radius: 8
 
-                            color: clipboardMouse.containsMouse ? Colors.surface : "transparent"
+                            /*
+                             * Keyboard-selected item and hovered item
+                             * share the same highlight.
+                             */
+                            color: clipboardList.currentIndex === index || clipboardMouse.containsMouse ? Colors.surface : "transparent"
 
                             Behavior on color {
                                 ColorAnimation {
@@ -639,9 +738,7 @@ Item {
                                         color: Colors.subtext
 
                                         font.family: Typography.ui
-
                                         font.pixelSize: Typography.xs
-
                                         font.bold: true
 
                                         textFormat: Text.PlainText
@@ -668,7 +765,6 @@ Item {
                                         id: previewImage
 
                                         anchors.fill: parent
-
                                         anchors.margins: 2
 
                                         visible: clipboardDelegate.modelData.imageReady
@@ -678,7 +774,6 @@ Item {
                                         fillMode: Image.PreserveAspectFit
 
                                         asynchronous: true
-
                                         cache: false
                                     }
 
@@ -713,13 +808,11 @@ Item {
                                     color: Colors.text
 
                                     font.family: Typography.ui
-
                                     font.pixelSize: Typography.sm
 
                                     maximumLineCount: 2
 
                                     wrapMode: Text.WordWrap
-
                                     elide: Text.ElideRight
 
                                     textFormat: Text.PlainText
@@ -742,9 +835,7 @@ Item {
                                         color: Colors.text
 
                                         font.family: Typography.ui
-
                                         font.pixelSize: Typography.sm
-
                                         font.bold: true
 
                                         textFormat: Text.PlainText
@@ -756,7 +847,6 @@ Item {
                                         color: Colors.subtext
 
                                         font.family: Typography.ui
-
                                         font.pixelSize: Typography.xs
 
                                         textFormat: Text.PlainText
@@ -779,6 +869,7 @@ Item {
                                     visible: clipboardMouse.containsMouse || copyButton.copied
 
                                     Layout.preferredWidth: copyButton.copied ? copyLabel.implicitWidth + 16 : 30
+
                                     Layout.preferredHeight: 30
 
                                     radius: 7
@@ -800,12 +891,10 @@ Item {
 
                                         color: copyButton.copied ? Colors.base : Colors.text
 
-                                        // Carries a Nerd Font glyph either way.
                                         font.family: Typography.mono
 
                                         font.pixelSize: copyButton.copied ? Typography.xs : 16
 
-                                        // The label and the fill already say "copied".
                                         font.weight: Typography.normal
 
                                         textFormat: Text.PlainText
@@ -832,6 +921,14 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
 
                                 onClicked: {
+                                    /*
+                                     * Keep keyboard selection synchronized
+                                     * with mouse selection.
+                                     */
+                                    clipboardList.currentIndex = clipboardDelegate.index;
+
+                                    clipboardList.forceActiveFocus();
+
                                     clipboardCenter.copyItem(clipboardDelegate.modelData);
                                 }
                             }
