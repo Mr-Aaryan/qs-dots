@@ -1,0 +1,56 @@
+# ==============================================================
+# GENERATED
+# ==============================================================
+
+# Rewritten by matugen every time the wallpaper changes -- it is
+# the output_path of [templates.quickshell] in
+# ~/.config/matugen/config.toml.
+#
+# theme/Colors.qml carries a full fallback palette and reads this
+# file with printErrors off, so a clone without it still comes up
+# themed and silent.
+theme/colors.json
+
+# ==============================================================
+# LOCAL STATE
+# ==============================================================
+
+# Username, profile picture path and the do-not-disturb flag,
+# rewritten by the shell whenever any of them change. Machine
+# specific -- profileImage is an absolute path into $HOME.
+#
+# settings/Settings.qml declares a default for every key and only
+# overwrites them onLoaded, so a clone without this file works.
+settings.json
+
+# ==============================================================
+# QT / QML ARTEFACTS
+#
+# Qt normally caches under ~/.cache rather than beside the source,
+# so these are precautionary -- they cost nothing and save a bad
+# commit if a tool ever writes them here.
+# ==============================================================
+
+*.qmlc
+*.jsc
+.qmlls.ini
+.qml_cache/
+
+# ==============================================================
+# EDITORS
+# ==============================================================
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ==============================================================
+# SCRATCH
+# ==============================================================
+
+*.bak
+*.orig
+*.rej
+*.log
