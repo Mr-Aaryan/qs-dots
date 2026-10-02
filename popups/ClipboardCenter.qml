@@ -19,6 +19,21 @@ Item {
     property var clipboardItems: []
 
     /*
+     * Raw `cliphist list` output from the last refresh. When a refresh
+     * returns the same output the model is left untouched, so reopening
+     * the popup does not rebuild every delegate.
+     */
+    property string lastListOutput: ""
+
+    /*
+     * Set of entry ids whose image has been decoded to disk. Kept
+     * outside the model on purpose: replacing the model for every
+     * decoded image rebuilt the whole list and reset the selection.
+     */
+    property var readyImages: ({})
+    property var pendingReadyImages: ({})
+
+    /*
      * Id of the entry currently being copied, and the id of the
      * entry that was just copied successfully. The latter drives
      * the "Copied" badge in the list.
@@ -51,6 +66,11 @@ Item {
     }
 
     function parseClipboardList(output) {
+        if (output === lastListOutput)
+            return;
+
+        lastListOutput = output;
+
         const lines = output.split("\n");
         const items = [];
 
@@ -94,8 +114,7 @@ Item {
                 extension: extension,
                 imageWidth: imageWidth,
                 imageHeight: imageHeight,
-                imagePath: isImage ? "/tmp/quickshell-clipboard-" + id + "." + extension : "",
-                imageReady: false
+                imagePath: isImage ? "/tmp/quickshell-clipboard-" + id + "." + extension : ""
             });
         }
 
@@ -115,72 +134,57 @@ Item {
     // IMAGE DECODING
     // ============================================================
 
+    /*
+     * A single shell process walks every image entry, newest first.
+     * Entries already decoded by an earlier run are reused from /tmp,
+     * so only new images ever hit `cliphist decode`. The id of each
+     * image that is available on disk is printed on its own line.
+     */
+    Process {
+        id: decodeProcess
+
+        stdout: SplitParser {
+            onRead: data => clipboardCenter.markImageReady(data.trim())
+        }
+    }
+
     function prepareImages() {
+        const args = [];
+
         for (let i = 0; i < clipboardItems.length; i++) {
             const item = clipboardItems[i];
 
-            if (!item.isImage)
-                continue;
-
-            decodeImage(item);
+            if (item.isImage)
+                args.push(item.rawLine, item.imagePath, item.id);
         }
+
+        decodeProcess.running = false;
+
+        if (args.length === 0)
+            return;
+
+        decodeProcess.command = ["sh", "-c", "while [ $# -ge 3 ]; do " + "raw=$1; out=$2; id=$3; shift 3; " + "if [ ! -s \"$out\" ]; then " + "printf '%s\\n' \"$raw\" | cliphist decode > \"$out.tmp\" " + "&& file --mime-type -b \"$out.tmp\" | grep -q '^image/' " + "&& mv \"$out.tmp\" \"$out\" " + "|| { rm -f \"$out.tmp\"; continue; }; " + "fi; " + "printf '%s\\n' \"$id\"; " + "done", "clipboard-images"].concat(args);
+
+        decodeProcess.running = true;
     }
 
-    function decodeImage(item) {
-        const tempPath = item.imagePath + ".tmp";
-
-        const process = Qt.createQmlObject(`
-            import Quickshell
-            import Quickshell.Io
-
-            Process {
-                command: [
-                    "sh",
-                    "-c",
-                    "set -e; " +
-                    "printf '%s\\\\n' \\"$1\\" | cliphist decode > \\"$2\\"; " +
-                    "file --mime-type \\"$2\\" | grep -q '^.*image/'; " +
-                    "mv \\"$2\\" \\"$3\\"",
-                    "clipboard-image",
-                    ${JSON.stringify(item.rawLine)},
-                    ${JSON.stringify(tempPath)},
-                    ${JSON.stringify(item.imagePath)}
-                ]
-
-                running: true
-
-                onExited: function(exitCode, exitStatus) {
-                    if (exitCode === 0) {
-                        clipboardCenter.markImageReady(
-                            ${JSON.stringify(item.id)}
-                        )
-                    } else {
-                        console.log(
-                            "Failed to decode clipboard image:",
-                            ${JSON.stringify(item.id)},
-                            "exit code:",
-                            exitCode
-                        )
-                    }
-
-                    destroy()
-                }
-            }
-        `, clipboardCenter);
-
-        process.running = true;
-    }
-
+    /*
+     * Ready ids arrive one per line; they are batched and applied once
+     * per event-loop turn so a burst of cached images costs a single
+     * property update.
+     */
     function markImageReady(id) {
-        for (let i = 0; i < clipboardItems.length; i++) {
-            if (clipboardItems[i].id === id) {
-                clipboardItems[i].imageReady = true;
+        if (id === "")
+            return;
 
-                clipboardItems = clipboardItems.slice();
+        pendingReadyImages[id] = true;
 
-                break;
-            }
-        }
+        Qt.callLater(flushReadyImages);
+    }
+
+    function flushReadyImages() {
+        readyImages = Object.assign({}, readyImages, pendingReadyImages);
+        pendingReadyImages = {};
     }
 
     // ============================================================
@@ -264,6 +268,13 @@ Item {
         copyProcess.running = true;
     }
 
+    function copyCurrent() {
+        const index = clipboardList.currentIndex;
+
+        if (index >= 0 && index < filteredItems.length)
+            copyItem(filteredItems[index]);
+    }
+
     // ============================================================
     // WIPE CLIPBOARD HISTORY
     // ============================================================
@@ -275,6 +286,8 @@ Item {
 
         onRunningChanged: if (!running) {
             clipboardCenter.clipboardItems = [];
+            clipboardCenter.lastListOutput = "";
+            clipboardCenter.readyImages = {};
             clipboardCenter.searchText = "";
             searchInput.text = "";
             clipboardList.currentIndex = -1;
@@ -288,7 +301,9 @@ Item {
     }
 
     function wipeClipboard() {
-        wipeProcess.command = ["cliphist", "wipe"];
+        decodeProcess.running = false;
+
+        wipeProcess.command = ["sh", "-c", "cliphist wipe; rm -f /tmp/quickshell-clipboard-*"];
         wipeProcess.running = true;
     }
 
@@ -300,13 +315,20 @@ Item {
         searchText = "";
         searchInput.text = "";
 
-        clipboardList.currentIndex = -1;
+        clipboardList.currentIndex = clipboardList.count > 0 ? 0 : -1;
+        clipboardList.positionViewAtBeginning();
 
         refresh();
 
         opened = true;
 
-        searchFocusTimer.restart();
+        /*
+         * Keyboard focus starts on the list with the newest entry
+         * selected. Typing still searches: printable keys pressed in
+         * the list are forwarded to the search field.
+         */
+        clipboardList.forceActiveFocus();
+        listFocusTimer.restart();
     }
 
     function close() {
@@ -334,14 +356,18 @@ Item {
     }
 
     Timer {
-        id: searchFocusTimer
+        id: listFocusTimer
 
         interval: 80
         repeat: false
 
+        /*
+         * Re-assert focus once the focus grab has handed the window
+         * keyboard focus, unless the user already moved it.
+         */
         onTriggered: {
-            if (clipboardCenter.opened)
-                searchInput.forceActiveFocus();
+            if (clipboardCenter.opened && !searchInput.activeFocus)
+                clipboardList.forceActiveFocus();
         }
     }
 
@@ -543,6 +569,9 @@ Item {
                                         }
                                     }
 
+                                    Keys.onReturnPressed: clipboardCenter.copyCurrent()
+                                    Keys.onEnterPressed: clipboardCenter.copyCurrent()
+
                                     Keys.onEscapePressed: {
                                         clipboardCenter.close();
                                     }
@@ -635,18 +664,36 @@ Item {
                         focus: clipboardCenter.opened
 
                         /*
-                         * Start at the first result.
-                         */
-                        currentIndex: clipboardList.count > 0 ? 0 : -1
-
-                        /*
-                         * UP
+                         * UP — from the first entry, move to the
+                         * search field.
                          */
                         Keys.onUpPressed: {
                             if (currentIndex > 0) {
                                 currentIndex--;
 
                                 positionViewAtIndex(currentIndex, ListView.Contain);
+                            } else {
+                                searchInput.forceActiveFocus();
+                            }
+                        }
+
+                        /*
+                         * Typing while the list has focus goes to the
+                         * search field, so search works without having
+                         * to move focus there first.
+                         */
+                        Keys.onPressed: event => {
+                            if (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))
+                                return;
+
+                            if (event.key === Qt.Key_Backspace) {
+                                searchInput.forceActiveFocus();
+                                searchInput.remove(searchInput.text.length - 1, searchInput.text.length);
+                                event.accepted = true;
+                            } else if (event.text.length > 0 && event.text.charCodeAt(0) >= 32 && event.text.charCodeAt(0) !== 127) {
+                                searchInput.forceActiveFocus();
+                                searchInput.insert(searchInput.text.length, event.text);
+                                event.accepted = true;
                             }
                         }
 
@@ -664,20 +711,12 @@ Item {
                         /*
                          * ENTER
                          */
-                        Keys.onReturnPressed: {
-                            if (currentIndex >= 0 && currentIndex < count) {
-                                clipboardCenter.copyItem(clipboardCenter.filteredItems[currentIndex]);
-                            }
-                        }
+                        Keys.onReturnPressed: clipboardCenter.copyCurrent()
 
                         /*
                          * Numpad Enter / alternate Enter event.
                          */
-                        Keys.onEnterPressed: {
-                            if (currentIndex >= 0 && currentIndex < count) {
-                                clipboardCenter.copyItem(clipboardCenter.filteredItems[currentIndex]);
-                            }
-                        }
+                        Keys.onEnterPressed: clipboardCenter.copyCurrent()
 
                         /*
                          * ESCAPE
@@ -691,6 +730,8 @@ Item {
 
                             required property var modelData
                             required property int index
+
+                            readonly property bool imageReady: clipboardCenter.readyImages[modelData.id] === true
 
                             width: clipboardList.width
 
@@ -767,9 +808,9 @@ Item {
                                         anchors.fill: parent
                                         anchors.margins: 2
 
-                                        visible: clipboardDelegate.modelData.imageReady
+                                        visible: clipboardDelegate.imageReady
 
-                                        source: clipboardDelegate.modelData.imageReady ? "file://" + clipboardDelegate.modelData.imagePath : ""
+                                        source: clipboardDelegate.imageReady ? "file://" + clipboardDelegate.modelData.imagePath : ""
 
                                         fillMode: Image.PreserveAspectFit
 
@@ -780,7 +821,7 @@ Item {
                                     Text {
                                         anchors.centerIn: parent
 
-                                        visible: !clipboardDelegate.modelData.imageReady || previewImage.status !== Image.Ready
+                                        visible: !clipboardDelegate.imageReady || previewImage.status !== Image.Ready
 
                                         text: "󰋩"
 
